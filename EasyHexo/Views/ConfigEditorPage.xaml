@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="EasyHexo.Views.ConfigEditorPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:l="using:EasyHexo.Localization"
+    xmlns:m="using:EasyHexo.Models">
+
+    <Grid Margin="24,16,24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题 + 操作按钮（“应用到配置”在总项上方） -->
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Spacing="2" Margin="0,0,16,0">
+                <TextBlock
+                    Style="{StaticResource TitleTextBlockStyle}"
+                    l:Trans.Text="config.title" />
+                <TextBlock
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    TextWrapping="Wrap"
+                    l:Trans.Text="config.subtitle" />
+            </StackPanel>
+
+            <StackPanel
+                Grid.Column="1"
+                Orientation="Horizontal"
+                Spacing="8"
+                VerticalAlignment="Center">
+                <Button Click="OnExpandAllClick" l:Trans.Content="common.expandAll" />
+                <Button Click="OnCollapseAllClick" l:Trans.Content="common.collapseAll" />
+                <Button Click="OnReloadClick" l:Trans.Content="common.reload" />
+                <Button
+                    x:Name="ApplyButton"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Click="OnApplyClick"
+                    IsEnabled="False"
+                    AutomationProperties.AutomationId="ApplyButton"
+                    l:Trans.Content="config.apply" />
+            </StackPanel>
+        </Grid>
+
+        <InfoBar
+            x:Name="StatusBar"
+            Grid.Row="1"
+            IsOpen="False"
+            IsClosable="True"
+            Margin="0,0,0,8" />
+
+        <!-- 配置列表 -->
+        <Grid Grid.Row="2">
+            <ListView
+                x:Name="ConfigListView"
+                ItemsSource="{x:Bind Rows}"
+                SelectionMode="None"
+                IsItemClickEnabled="False"
+                ItemContainerStyle="{StaticResource ConfigListItemStyle}"
+                ScrollViewer.HorizontalScrollMode="Disabled">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="m:ConfigRow">
+                        <StackPanel Margin="{x:Bind Indent}" Padding="0,3,0,3">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="28" />
+                                    <ColumnDefinition Width="230" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Button
+                                    Grid.Column="0"
+                                    Width="24"
+                                    Height="24"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    CornerRadius="4"
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind ChevronVisibility}"
+                                    IsEnabled="{x:Bind CanExpand}"
+                                    Click="OnToggleExpandClick">
+                                    <FontIcon Glyph="{x:Bind ChevronGlyph}" FontSize="10" />
+                                </Button>
+
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{x:Bind Key}"
+                                    FontWeight="SemiBold"
+                                    VerticalAlignment="Center"
+                                    TextTrimming="CharacterEllipsis"
+                                    ToolTipService.ToolTip="{x:Bind KeyToolTip}"
+                                    Margin="0,0,10,0" />
+
+                                <TextBox
+                                    Grid.Column="2"
+                                    Text="{x:Bind ValueText}"
+                                    Visibility="{x:Bind EditorVisibility}"
+                                    VerticalAlignment="Center"
+                                    MinHeight="32"
+                                    TextChanged="OnValueTextChanged" />
+
+                                <TextBlock
+                                    Grid.Column="2"
+                                    Text="{x:Bind ValueText}"
+                                    Visibility="{x:Bind StaticValueVisibility}"
+                                    VerticalAlignment="Center"
+                                    TextWrapping="Wrap"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                                <Border
+                                    Grid.Column="3"
+                                    Margin="10,0,0,0"
+                                    Padding="6,1"
+                                    CornerRadius="4"
+                                    VerticalAlignment="Center"
+                                    Background="{ThemeResource ControlFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                    BorderThickness="1">
+                                    <TextBlock
+                                        Text="{x:Bind TypeText}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </Border>
+                            </Grid>
+
+                            <TextBlock
+                                Text="{x:Bind Comment}"
+                                Visibility="{x:Bind CommentVisibility}"
+                                Margin="28,2,0,2"
+                                TextWrapping="Wrap"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <!-- 未选择 / 无法读取时的空状态 -->
+            <StackPanel
+                x:Name="EmptyPanel"
+                Visibility="Collapsed"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                MaxWidth="520"
+                Spacing="12">
+                <FontIcon
+                    Glyph="&#xE7C3;"
+                    FontSize="32"
+                    HorizontalAlignment="Center"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock
+                    x:Name="EmptyMessageText"
+                    TextWrapping="Wrap"
+                    TextAlignment="Center"
+                    HorizontalAlignment="Center" />
+                <Button
+                    x:Name="PickRootButton"
+                    Style="{StaticResource AccentButtonStyle}"
+                    HorizontalAlignment="Center"
+                    Click="OnPickRootClick"
+                    l:Trans.Content="root.choose" />
+            </StackPanel>
+        </Grid>
+
+        <TextBlock
+            x:Name="StatsText"
+            Grid.Row="3"
+            Margin="0,8,0,0"
+            Style="{StaticResource CaptionTextBlockStyle}"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+    </Grid>
+</Page>

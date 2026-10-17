@@ -1,0 +1,122 @@
+using System.Collections.Generic;
+
+namespace EasyHexo.Localization;
+
+/// <summary>
+/// English strings. Keep keys identical to <see cref="StringsZhCn"/>.
+/// </summary>
+internal static class StringsEnUs
+{
+    internal static readonly Dictionary<string, string> Map = new()
+    {
+        // ── Common ────────────────────────────────────────────
+        ["app.title"] = "Easy Hexo",
+        ["nav.config"] = "Config editor",
+        ["nav.publish"] = "Publish",
+        ["nav.settings"] = "Settings",
+
+        ["common.success"] = "Success",
+        ["common.error"] = "Error",
+        ["common.warning"] = "Warning",
+        ["common.info"] = "Info",
+        ["common.reload"] = "Reload",
+        ["common.expandAll"] = "Expand all",
+        ["common.collapseAll"] = "Collapse all",
+        ["common.cancel"] = "Cancel",
+        ["common.overwrite"] = "Overwrite",
+        ["common.browse"] = "Browse…",
+        ["common.openFolder"] = "Open folder",
+        ["common.refresh"] = "Refresh",
+        ["common.clear"] = "Clear",
+
+        // ── Hexo root ─────────────────────────────────────────
+        ["root.current"] = "Current Hexo root",
+        ["root.none"] = "Not selected",
+        ["root.choose"] = "Choose Hexo root",
+        ["root.invalid"] = "The selected folder is not a valid Hexo root: it must contain a _config.yml file and a source folder.",
+        ["root.error.notFound"] = "Folder not found",
+        ["root.error.config"] = "_config.yml is missing",
+        ["root.error.source"] = "source folder is missing",
+        ["root.loadError"] = "Failed to load the Hexo root: {0}",
+
+        // ── Config editor ─────────────────────────────────────
+        ["config.title"] = "Config editor",
+        ["config.subtitle"] = "_config.yml is turned into a collapsible tree based on its indentation. Editable values get an input box prefilled with the current value; existing comments are shown as read-only descriptions. When done, click \"Apply to config\" at the top right.",
+        ["config.apply"] = "Apply to config",
+        ["config.stats"] = "{0} settings · {1} modified",
+        ["config.noChanges"] = "There is nothing to apply.",
+        ["config.applied"] = "Applied {0} change(s). Backup of the original file: {1}",
+        ["config.applyFailed"] = "Apply failed: {0}",
+        ["config.loaded"] = "Loaded {0} settings.",
+        ["config.loadError"] = "Failed to parse _config.yml: {0}",
+        ["config.empty"] = "This _config.yml has no settings to display.",
+        ["config.discardTitle"] = "Discard unsaved changes?",
+        ["config.discardMessage"] = "{0} change(s) have not been written back to _config.yml yet. Continuing will lose them.",
+        ["config.discardConfirm"] = "Discard",
+        ["config.groupWithCount"] = "Group · {0} item(s)",
+        ["config.readonly"] = "Read-only",
+        ["config.type.text"] = "Text",
+        ["config.type.number"] = "Number",
+        ["config.type.bool"] = "Boolean",
+        ["config.type.list"] = "List",
+        ["config.type.other"] = "Other",
+        ["config.unparsed"] = "{0} more line(s) could not be parsed and were left untouched.",
+
+        // ── Publish ───────────────────────────────────────────
+        ["publish.title"] = "Publish",
+        ["publish.subtitle"] = "Open a published post from the list (newest modified first), or drop .md / .txt files into the window. Title and date are required; type a tag and press Enter to lock it in.",
+        ["publish.posts"] = "Published posts",
+        ["publish.postCount"] = "{0} post(s)",
+        ["publish.postsEmpty"] = "There are no posts in source\\_posts yet.",
+        ["publish.info"] = "Post information",
+        ["publish.titleField"] = "Title (required)",
+        ["publish.dateField"] = "Date (required)",
+        ["publish.timeField"] = "Time",
+        ["publish.tagsField"] = "Tags",
+        ["publish.tagsPlaceholder"] = "Type a tag and press Enter",
+        ["publish.dropHint"] = "Drop .md / .txt files into the window, or click \"Browse…\"",
+        ["publish.browse"] = "Browse…",
+        ["publish.button"] = "Publish post",
+        ["publish.sourceFile"] = "Current file",
+        ["publish.noFile"] = "(no file selected)",
+        ["publish.queue"] = "{0} more file(s) queued",
+        ["publish.assets"] = "Asset handling",
+        ["publish.assetsFolderPlaceholder"] = "title",
+        ["publish.assetsInfo"] = "Local absolute paths such as ![img](E:\\images\\a.png) or [file](D:\\files\\a.zip) are copied into source\\{0}\\ on publish and the links are rewritten to /{0}/file-name. http(s) links are skipped.",
+        ["publish.needTitle"] = "Please enter a title.",
+        ["publish.needFile"] = "Please drop or browse a .md / .txt file first.",
+        ["publish.success"] = "Published: {0}",
+        ["publish.assetsCopied"] = "{0} asset file(s) copied to {1}",
+        ["publish.failed"] = "Publish failed: {0}",
+        ["publish.overwriteTitle"] = "Overwrite existing post?",
+        ["publish.overwriteMessage"] = "The target file already exists. Publishing will overwrite it:\n{0}",
+        ["publish.loaded"] = "Loaded: {0}",
+        ["publish.loadFailed"] = "Failed to read the file: {0}",
+        ["publish.warnMissingAsset"] = "Local file not found, the original link was kept: {0}",
+        ["publish.warnCopyFailed"] = "Copy failed, the original link was kept: {0} ({1})",
+        ["publish.txtImported"] = "The .txt file was copied to a temp folder and renamed to .md.",
+        ["publish.skipped"] = "{0} unsupported file(s) skipped (only .md / .txt are supported).",
+        ["publish.dropCaption"] = "Drop to load post files",
+        ["publish.frontMatterFound"] = "Front matter detected at the top of the file.",
+        ["publish.frontMatterMissing"] = "No standard front matter found. The values below will be written at the top of the file when you publish.",
+        ["publish.nextQueued"] = "Loaded the next queued post, {0} left.",
+        ["publish.editHint"] = "Click a post on the left to edit and republish it",
+
+        // ── Settings ──────────────────────────────────────────
+        ["settings.title"] = "Settings",
+        ["settings.subtitle"] = "Language, Hexo root folder and about information.",
+        ["settings.language"] = "Language / 语言",
+        ["settings.languageHint"] = "The UI updates immediately and the choice is stored on this machine.",
+        ["settings.languageChanged"] = "Interface language switched.",
+        ["settings.root"] = "Hexo root folder",
+        ["settings.changeRoot"] = "Change root",
+        ["settings.rootChanged"] = "Hexo root folder changed.",
+        ["settings.openFolder"] = "Open in File Explorer",
+        ["settings.about"] = "About",
+        ["settings.version"] = "Version {0}",
+        ["settings.repo"] = "Repository",
+        ["settings.description"] = "Easy Hexo is a WinUI 3 desktop tool for Windows 10 / 11: edit Hexo's _config.yml visually, publish Markdown posts through a form, and automatically gather local images and attachments.",
+        ["settings.license"] = "License: MIT",
+        ["settings.tech"] = "Built with WinUI 3 (Windows App SDK) + .NET 8 + C#",
+    };
+}

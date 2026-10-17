@@ -1,0 +1,230 @@
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace EasyHexo.Services;
+
+public sealed class AssetCopyRecord
+{
+    public string SourcePath { get; init; } = string.Empty;
+
+    public string FileName { get; init; } = string.Empty;
+
+    public string DestinationPath { get; init; } = string.Empty;
+}
+
+public sealed class AssetProcessResult
+{
+    /// <summary>改写链接后的正文。</summary>
+    public string Content { get; set; } = string.Empty;
+
+    /// <summary>资源目录（source\标题）；没有复制任何文件时为空。</summary>
+    public string AssetFolder { get; set; } = string.Empty;
+
+    public List<AssetCopyRecord> Copied { get; } = new();
+
+    public List<string> Warnings { get; } = new();
+}
+
+/// <summary>
+/// 处理文章正文里的“本机绝对路径”图片 / 附件。
+///
+/// 例：![image.png](E:\images\image.png)  →  ![image.png](/标题示例/image.png)
+/// 处理时会把源文件复制到 Hexo 根目录\source\标题示例\ 下；网页 URL、相对路径一律跳过。
+/// </summary>
+public static partial class AssetService
+{
+    public static AssetProcessResult Process(string hexoRoot, string title, string? body)
+    {
+        var result = new AssetProcessResult { Content = body ?? string.Empty };
+        if (string.IsNullOrEmpty(result.Content))
+        {
+            return result;
+        }
+
+        var folderName = PathHelper.SanitizeName(title);
+        var assetFolder = Path.Combine(hexoRoot, "source", folderName);
+        var bySource = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        result.Content = MarkdownLinkRegex().Replace(result.Content, match =>
+        {
+            var lead = match.Groups["lead"].Value;
+            var rawUrl = match.Groups["url"].Value.Trim();
+            if (rawUrl.Length == 0)
+            {
+                return match.Value;
+            }
+
+            var url = CleanUrl(rawUrl);
+            if (!IsLocalAbsolutePath(url))
+            {
+                return match.Value; // 网页链接 / 相对路径：跳过
+            }
+
+            var sourcePath = url;
+            if (!File.Exists(sourcePath))
+            {
+                var unescaped = SafeUnescape(url);
+                if (unescaped is not null && File.Exists(unescaped))
+                {
+                    sourcePath = unescaped;
+                }
+                else
+                {
+                    result.Warnings.Add(Localization.Lang.T("publish.warnMissingAsset", url));
+                    return match.Value;
+                }
+            }
+
+            if (!bySource.TryGetValue(sourcePath, out var fileName))
+            {
+                fileName = MakeUniqueFileName(Path.GetFileName(sourcePath), usedNames);
+                usedNames.Add(fileName);
+                bySource[sourcePath] = fileName;
+
+                try
+                {
+                    Directory.CreateDirectory(assetFolder);
+                    var destination = Path.Combine(assetFolder, fileName);
+                    if (!PathHelper.AreSame(sourcePath, destination))
+                    {
+                        File.Copy(sourcePath, destination, true);
+                    }
+
+                    result.AssetFolder = assetFolder;
+                    result.Copied.Add(new AssetCopyRecord
+                    {
+                        SourcePath = sourcePath,
+                        FileName = fileName,
+                        DestinationPath = destination,
+                    });
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Write($"复制资源失败：{sourcePath}", ex);
+                    result.Warnings.Add(Localization.Lang.T("publish.warnCopyFailed", sourcePath, ex.Message));
+                    return match.Value;
+                }
+            }
+
+            var newUrl = EncodeUrl("/" + folderName + "/" + fileName);
+            return lead + newUrl + ")";
+        });
+
+        return result;
+    }
+
+    /// <summary>去掉 &lt; &gt; 包裹与 markdown 的 "title" 部分。</summary>
+    private static string CleanUrl(string url)
+    {
+        url = url.Trim();
+        if (url.Length >= 2 && url[0] == '<' && url[^1] == '>')
+        {
+            url = url[1..^1].Trim();
+        }
+
+        var titleStart = url.IndexOf(" \"", StringComparison.Ordinal);
+        if (titleStart < 0)
+        {
+            titleStart = url.IndexOf(" '", StringComparison.Ordinal);
+        }
+
+        if (titleStart > 0)
+        {
+            url = url[..titleStart].Trim();
+        }
+
+        return url;
+    }
+
+    private static bool IsLocalAbsolutePath(string path)
+    {
+        if (path.Length < 3)
+        {
+            return false;
+        }
+
+        if (path.Contains("://", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // UNC：\\server\share
+        if (path.StartsWith(@"\\", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return path.Length >= 3 &&
+               char.IsAsciiLetter(path[0]) &&
+               path[1] == ':' &&
+               (path[2] == '\\' || path[2] == '/');
+    }
+
+    private static string? SafeUnescape(string url)
+    {
+        try
+        {
+            return url.Contains('%') ? Uri.UnescapeDataString(url) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string MakeUniqueFileName(string fileName, HashSet<string> usedNames)
+    {
+        if (fileName.Length == 0)
+        {
+            fileName = "asset";
+        }
+
+        var candidate = fileName;
+        var name = Path.GetFileNameWithoutExtension(fileName);
+        var extension = Path.GetExtension(fileName);
+        var index = 2;
+        while (usedNames.Contains(candidate))
+        {
+            candidate = $"{name}-{index++}{extension}";
+        }
+
+        return candidate;
+    }
+
+    /// <summary>把站点内 URL 里会破坏 Markdown 的字符转义，其余（含中文）保持原样。</summary>
+    private static string EncodeUrl(string url)
+    {
+        var builder = new StringBuilder(url.Length);
+        foreach (var ch in url)
+        {
+            switch (ch)
+            {
+                case ' ':
+                    builder.Append("%20");
+                    break;
+                case '(':
+                    builder.Append("%28");
+                    break;
+                case ')':
+                    builder.Append("%29");
+                    break;
+                case '#':
+                    builder.Append("%23");
+                    break;
+                case '?':
+                    builder.Append("%3F");
+                    break;
+                default:
+                    builder.Append(ch);
+                    break;
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>匹配 ![alt](url) / [text](url)。</summary>
+    [GeneratedRegex(@"(?<lead>!?\[[^\]\r\n]*\]\()(?<url>[^)\r\n]+)\)", RegexOptions.Compiled)]
+    private static partial Regex MarkdownLinkRegex();
+}
