@@ -4,7 +4,7 @@
 
 > 仓库地址：<https://github.com/monishguy/easy-hexo-by-monish>
 > 许可证：MIT（见仓库根目录 [LICENSE](LICENSE)）　|　技术栈：**C# + WinUI 3（Windows App SDK 1.7）+ .NET 8**
-> 当前版本：**1.2.0**（1.2.0：新增“运行”页执行 Hexo 命令并实时显示输出；配置页改为顶部基本信息 + 下方分区；修复展开/收起后跳回顶部）
+> 当前版本：**1.2.1**（1.2.1：用户配置目录固定到 `%APPDATA%\EasyHexo`，替换软件目录也不丢站点、首次启动自动迁移旧设置；设置页左对齐并精简描述、站点目录按钮改为“浏览”，新增“用户配置目录”入口）
 
 ![配置编辑](docs/screenshots/config-editor.png)
 
@@ -12,7 +12,7 @@
 
 | 发布文章 | 设置（浅色主题） |
 | --- | --- |
-| ![发布文章](docs/screenshots/publish.png) | ![设置](docs/screenshots/settings-light.png) |
+| ![发布文章](docs/screenshots/publish.png) | ![设置](docs/screenshots/settings.png) |
 
 ---
 
@@ -99,6 +99,8 @@ ewfavicon.png`，配置写为 `favicon: /newfavicon.png`；
 - 拖入/浏览导入 `.md` 后出现在“待发布”列表；修改标题后切到别的文章再切回，草稿内容正确恢复；
 - 配置列表滚动后展开/收起分组，滚动位置保持不变（不再跳回顶部）；顶部“基本信息”布局与站点图标预览正常，改值后高亮、可撤回；
 - “运行”页执行命令时显示进度圈，输出实时出现在框内，结束后显示退出码，可停止；
+- 用户配置目录固定在 `%APPDATA%\EasyHexo`：旧版设置自动迁移、首次启动自动创建，重启后自动打开上次站点；
+- 设置页内容左对齐（非最小宽度时不再整体右偏），语言 / 主题无多余描述，站点目录按钮为“浏览”，并显示用户配置目录路径；
 - 窗口最小尺寸生效（1040×680），侧栏收起时隐藏根目录、展开后显示；
 - 浅色 / 深色 / 跟随系统三种主题即时生效；
 - 中英文切换、简体中文键名翻译、窗口缩放布局均正常。
@@ -234,8 +236,8 @@ docs/screenshots/              # README 截图
 
 | 内容 | 位置 |
 | --- | --- |
-| 设置（根目录、语言、主题、资源分组勾选记忆） | `%LOCALAPPDATA%\EasyHexo\settings.json` |
-| 错误日志 | `%LOCALAPPDATA%\EasyHexo\logs\easyhexo.log` |
+| 设置（根目录、语言、主题、资源分组勾选记忆） | `%APPDATA%\EasyHexo\settings.json`（**不在软件目录**，升级 / 重启后自动恢复上次站点；旧版 `%LOCALAPPDATA%` 的配置首次启动会自动迁移） |
+| 错误日志 | `%APPDATA%\EasyHexo\logs\easyhexo.log` |
 | 拖入 `.txt` 的临时 md | `%TEMP%\EasyHexo\<时间戳>\` |
 | 配置文件备份 | `<配置所在目录>\*.easyhexo.bak` |
 

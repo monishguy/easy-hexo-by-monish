@@ -36,7 +36,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <AssemblyTitle>Hexo 配置易 (Easy Hexo)</AssemblyTitle>
     <Product>Easy Hexo</Product>
     <Company>monishguy</Company>

@@ -2,12 +2,17 @@ using System.Text.Json;
 
 namespace EasyHexo.Services;
 
-/// <summary>应用本机的可写目录（设置、日志）。</summary>
+/// <summary>
+/// 用户数据目录（设置、日志），固定在 %APPDATA%\EasyHexo，不在软件目录里。
+/// 这样替换 / 升级软件目录后，上次的 Hexo 站点仍会自动恢复。
+/// </summary>
 public static class AppPaths
 {
+    private const string AppFolderName = "EasyHexo";
+
     public static string AppDataDir => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "EasyHexo");
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        AppFolderName);
 
     public static string SettingsFile => Path.Combine(AppDataDir, "settings.json");
 
@@ -15,9 +20,50 @@ public static class AppPaths
 
     public static string LogFile => Path.Combine(LogDir, "easyhexo.log");
 
+    /// <summary>旧版本使用的 %LOCALAPPDATA%\EasyHexo（仅用于迁移）。</summary>
+    private static string LegacyLocalDir => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        AppFolderName);
+
     public static void EnsureAppDataDir() => Directory.CreateDirectory(AppDataDir);
 
     public static void EnsureLogDir() => Directory.CreateDirectory(LogDir);
+
+    /// <summary>
+    /// 首次使用新版本时，把旧位置（%LOCALAPPDATA% 或软件目录）里的 settings.json
+    /// 迁移到 %APPDATA%\EasyHexo，避免升级后丢失上次选择的 Hexo 目录。
+    /// </summary>
+    public static void MigrateLegacySettings()
+    {
+        try
+        {
+            if (File.Exists(SettingsFile))
+            {
+                return;
+            }
+
+            EnsureAppDataDir();
+
+            var candidates = new[]
+            {
+                Path.Combine(LegacyLocalDir, "settings.json"),
+                Path.Combine(AppContext.BaseDirectory, "settings.json"),
+            };
+
+            foreach (var candidate in candidates)
+            {
+                if (File.Exists(candidate))
+                {
+                    File.Copy(candidate, SettingsFile, overwrite: false);
+                    return;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("迁移旧设置失败", ex);
+        }
+    }
 }
 
 /// <summary>极简文件日志：出现未处理异常或读写失败时写一行，便于排查。</summary>
@@ -47,7 +93,7 @@ public static class AppLog
         Write($"{message}: {exception.GetType().Name}: {exception.Message}{Environment.NewLine}{exception.StackTrace}");
 }
 
-/// <summary>用户设置（保存在 %LOCALAPPDATA%\EasyHexo\settings.json）。</summary>
+/// <summary>用户设置（保存在 %APPDATA%\EasyHexo\settings.json，不在软件目录）。</summary>
 public sealed class AppSettings
 {
     /// <summary>上次选择的 Hexo 根目录。</summary>

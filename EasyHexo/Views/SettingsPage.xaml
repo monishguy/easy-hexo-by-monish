@@ -5,8 +5,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:l="using:EasyHexo.Localization">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="24,16,24,24" Spacing="12" MaxWidth="1000" HorizontalAlignment="Stretch">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Left">
+        <StackPanel Margin="24,16,24,24" Spacing="12" MaxWidth="1000" HorizontalAlignment="Left">
 
             <StackPanel Spacing="2">
                 <TextBlock
@@ -36,11 +36,6 @@
                         <ComboBoxItem Content="简体中文" Tag="zh-CN" />
                         <ComboBoxItem Content="English" Tag="en-US" />
                     </ComboBox>
-                    <TextBlock
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        TextWrapping="Wrap"
-                        l:Trans.Text="settings.languageHint" />
                 </StackPanel>
             </Border>
 
@@ -60,11 +55,6 @@
                         <ComboBoxItem Tag="light" l:Trans.Content="settings.themeLight" />
                         <ComboBoxItem Tag="dark" l:Trans.Content="settings.themeDark" />
                     </ComboBox>
-                    <TextBlock
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        TextWrapping="Wrap"
-                        l:Trans.Text="settings.themeHint" />
                 </StackPanel>
             </Border>
 
@@ -87,6 +77,22 @@
                             l:Trans.Content="settings.changeRoot" />
                         <Button Click="OnOpenRootClick" l:Trans.Content="settings.openFolder" />
                     </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 用户配置目录（不在软件目录，升级 / 重启后保留） -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <StackPanel Spacing="8">
+                    <TextBlock
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        l:Trans.Text="settings.configDir" />
+                    <TextBlock
+                        x:Name="ConfigDirText"
+                        TextWrapping="Wrap"
+                        IsTextSelectionEnabled="True"
+                        AutomationProperties.AutomationId="ConfigDirText"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <Button Click="OnOpenConfigDirClick" l:Trans.Content="settings.openConfigDir" />
                 </StackPanel>
             </Border>
 

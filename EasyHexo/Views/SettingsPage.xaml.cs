@@ -48,6 +48,7 @@ public sealed partial class SettingsPage : Page
         }
 
         RootPathText.Text = AppState.Current.Project?.RootPath ?? Lang.T("root.none");
+        ConfigDirText.Text = AppPaths.AppDataDir;
 
         var version = typeof(App).Assembly.GetName().Version;
         VersionText.Text = Lang.T("settings.version", version is null ? "1.0" : version.ToString(3));
@@ -98,6 +99,20 @@ public sealed partial class SettingsPage : Page
 
         ApplyLocalization();
         ShowMessage(InfoBarSeverity.Success, Lang.T("settings.rootChanged"));
+    }
+
+    private void OnOpenConfigDirClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.AppDataDir);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("创建用户配置目录失败", ex);
+        }
+
+        ShellHelper.OpenFolder(AppPaths.AppDataDir);
     }
 
     private void OnOpenRootClick(object sender, RoutedEventArgs e)

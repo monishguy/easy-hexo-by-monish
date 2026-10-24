@@ -32,8 +32,15 @@ public sealed class AppState
     /// <summary>启动时调用一次：读取设置、套用语言、恢复上次的根目录。</summary>
     public void Initialize()
     {
+        // 设置固定在 %APPDATA%\EasyHexo（不在软件目录），升级 / 重启后仍能恢复上次站点
+        AppPaths.MigrateLegacySettings();
         Settings = SettingsService.Load();
         Lang.SetLanguage(Settings.Language);
+
+        if (!File.Exists(AppPaths.SettingsFile))
+        {
+            SaveSettings();
+        }
 
         if (!string.IsNullOrWhiteSpace(Settings.HexoRoot) &&
             HexoProject.TryCreate(Settings.HexoRoot, out var project, out _))
