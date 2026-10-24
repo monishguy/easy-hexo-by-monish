@@ -70,14 +70,14 @@ public sealed class AssetProcessResult
 }
 
 /// <summary>
-/// 处理文章正文里的“本机绝对路径”图片 / 附件。
+/// 处理文章正文里的“本机图片 / 附件”链接。
 ///
-/// * <see cref="Scan"/>：发布页使用，列出所有候选项并按图片 / 文件 / 未识别分类；
-/// * <see cref="Process(string,string,string?,IReadOnlyDictionary{string,AssetSelection}?)"/>：
-///   按用户在界面上的勾选复制文件并改写链接，未勾选的保持原样。
+/// 支持两种写法：
+/// * 本机绝对路径，例如 E:\images\image.png；
+/// * 相对文章所在文件夹的路径，例如 ..\Downloads\boot.img、images\a.png。
 ///
-/// 例：![image.png](E:\images\image.png) → ![image.png](/标题示例/image.png)
-/// 网页 URL、相对路径、站点内路径一律跳过。
+/// 相对路径会先按文章所在目录解析：文件存在 → 图片/文件；不存在 → 未识别项（由用户浏览指定）。
+/// 网页 URL、站点内路径（以 / 开头）一律跳过。
 /// </summary>
 public static partial class AssetService
 {
@@ -86,8 +86,11 @@ public static partial class AssetService
         ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".svg", ".avif",
     };
 
-    /// <summary>扫描正文中的本机绝对路径资源（按出现顺序，URL 去重）。</summary>
-    public static List<AssetLink> Scan(string? body)
+    /// <summary>
+    /// 扫描正文中的本机资源（按出现顺序，URL 去重）。
+    /// articleDirectory 为文章所在文件夹，用于解析相对路径。
+    /// </summary>
+    public static List<AssetLink> Scan(string? body, string? articleDirectory = null)
     {
         var result = new List<AssetLink>();
         if (string.IsNullOrEmpty(body))
@@ -107,12 +110,12 @@ public static partial class AssetService
             }
 
             var url = CleanUrl(rawUrl);
-            if (!IsLocalAbsolutePath(url) || !seen.Add(url))
+            if ((!IsLocalAbsolutePath(url) && !IsRelativeAssetCandidate(url)) || !seen.Add(url))
             {
                 continue;
             }
 
-            var localPath = ResolveExistingFile(url);
+            var localPath = ResolveExistingFile(url, articleDirectory);
             var isImageLink = lead.StartsWith('!');
             var extension = Path.GetExtension(localPath ?? url).ToLowerInvariant();
             var isImage = isImageLink || ImageExtensions.Contains(extension, StringComparer.Ordinal);
@@ -134,7 +137,7 @@ public static partial class AssetService
 
     /// <summary>兼容旧调用：不传选择时处理所有能解析到的本机资源。</summary>
     public static AssetProcessResult Process(string hexoRoot, string title, string? body) =>
-        Process(hexoRoot, title, body, null);
+        Process(hexoRoot, title, body, null, null);
 
     /// <summary>
     /// 按 selections（URL → 是否包含 / 替换路径）复制资源并改写链接。
@@ -144,7 +147,8 @@ public static partial class AssetService
         string hexoRoot,
         string title,
         string? body,
-        IReadOnlyDictionary<string, AssetSelection>? selections)
+        IReadOnlyDictionary<string, AssetSelection>? selections,
+        string? articleDirectory = null)
     {
         var result = new AssetProcessResult { Content = body ?? string.Empty };
         if (string.IsNullOrEmpty(result.Content))
@@ -167,9 +171,9 @@ public static partial class AssetService
             }
 
             var url = CleanUrl(rawUrl);
-            if (!IsLocalAbsolutePath(url))
+            if (!IsLocalAbsolutePath(url) && !IsRelativeAssetCandidate(url))
             {
-                return match.Value; // 网页链接 / 相对路径：跳过
+                return match.Value; // 网页链接 / 站点内路径：跳过
             }
 
             AssetSelection? selection = null;
@@ -184,7 +188,7 @@ public static partial class AssetService
             var sourcePath = selection?.SourcePathOverride;
             if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
             {
-                sourcePath = ResolveExistingFile(url);
+                sourcePath = ResolveExistingFile(url, articleDirectory);
             }
 
             if (sourcePath is null)
@@ -233,15 +237,70 @@ public static partial class AssetService
 
     // ── 解析辅助 ─────────────────────────────────────────────────────
 
-    private static string? ResolveExistingFile(string path)
+    private static string? ResolveExistingFile(string path, string? articleDirectory)
     {
-        if (File.Exists(path))
+        if (IsLocalAbsolutePath(path))
         {
-            return path;
+            if (File.Exists(path))
+            {
+                return path;
+            }
+
+            var unescapedAbsolute = SafeUnescape(path);
+            return unescapedAbsolute is not null && File.Exists(unescapedAbsolute) ? unescapedAbsolute : null;
         }
 
-        var unescaped = SafeUnescape(path);
-        return unescaped is not null && File.Exists(unescaped) ? unescaped : null;
+        if (string.IsNullOrEmpty(articleDirectory))
+        {
+            return null;
+        }
+
+        try
+        {
+            var relative = SafeUnescape(path) ?? path;
+            relative = relative.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+            var full = Path.GetFullPath(Path.Combine(articleDirectory, relative));
+            return File.Exists(full) ? full : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>相对路径且看起来像文件（有扩展名、不是网页/站点链接）才作为资源候选。</summary>
+    private static bool IsRelativeAssetCandidate(string url)
+    {
+        if (url.Length == 0 || IsLocalAbsolutePath(url))
+        {
+            return false;
+        }
+
+        var first = url[0];
+        if (first is '/' or '\\' or '#' or '?' )
+        {
+            return false;
+        }
+
+        if (url.Contains("://", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var pathPart = url;
+        var cut = pathPart.IndexOfAny(new[] { '?', '#' });
+        if (cut >= 0)
+        {
+            pathPart = pathPart[..cut];
+        }
+
+        var extension = Path.GetExtension(pathPart).ToLowerInvariant();
+        if (extension.Length == 0)
+        {
+            return false;
+        }
+
+        return extension is not (".html" or ".htm" or ".php" or ".asp" or ".aspx" or ".jsp" or ".md" or ".markdown" or ".xml");
     }
 
     private static string ExtractLabel(string lead)

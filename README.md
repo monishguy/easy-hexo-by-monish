@@ -4,7 +4,7 @@
 
 > 仓库地址：<https://github.com/monishguy/easy-hexo-by-monish>
 > 许可证：MIT（见仓库根目录 [LICENSE](LICENSE)）　|　技术栈：**C# + WinUI 3（Windows App SDK 1.7）+ .NET 8**
-> 当前版本：**1.1.0**
+> 当前版本：**1.1.1**（1.1.1：支持文章内相对路径的图片/附件，相对文章所在目录解析，不存在则列为未识别项）
 
 ![配置编辑](docs/screenshots/config-editor.png)
 
@@ -174,7 +174,7 @@ docs/screenshots/              # README 截图
 | `.txt` 复制到临时目录改名 `.md` | `TempFileService.ImportAsMarkdownAsync` |
 | front-matter 表单化（标题/日期必填、日期选择器、Enter 锁定标签） | `FrontMatterService` + `DatePicker/TimePicker` + 标签块 |
 | 无 front-matter 时先填值、发布时写入开头 | `FrontMatterService.Compose` |
-| 资源文件处理：图片 / 文件 / 未识别项分组 | `AssetService.Scan` 按链接分类：存在的本机图片、存在的本机附件、找不到的本机文件（未识别项） |
+| 资源文件处理：图片 / 文件 / 未识别项分组 | `AssetService.Scan` 支持**本机绝对路径**与**相对文章目录的相对路径**（如 `..\Downloads\boot.img`）：能解析到的按图片/文件分组，解析不到的本机文件列为未识别项 |
 | 每组/每项复选框、默认勾选、记住设置、收起/展开 | `AssetGroupVm` / `AssetItemVm`；图片/文件的组勾选状态写入 `settings.json`（记住设置），未识别项默认不勾选且不记住 |
 | 未识别项“浏览”指定本机文件后自动替换并复制 | `OnAssetBrowseClick` 记录路径 → `AssetSelection.SourcePathOverride` → 发布时复制并改写链接 |
 | 取消勾选的资源保持原样 | `AssetSelection.Include=false`，链接与文件都不动 |
@@ -200,10 +200,10 @@ docs/screenshots/              # README 截图
 ## 7. 发布规则
 
 1. 文章内容来自所选 `.md` 文件；`.txt` 会先复制到临时目录再改名成 `.md`；
-2. 正文里形如 `![alt](E:\images\a.png)`、`[text](D:\files\a.zip)` 的**本机绝对路径**：
+2. 正文里形如 `![alt](E:\images\a.png)`、`[text](D:\files\a.zip)` 的**本机绝对路径**，或形如 `..\Downloads\boot.img`、`images\a.png` 的**相对文章所在文件夹的相对路径**：
    - 在“资源文件处理”里按 图片 / 文件 / 未识别项 分组列出，勾选的项才会处理；
    - 复制到 `Hexo根目录\source\<标题>\`，链接改写为 `/<标题>/<文件名>`（空格等特殊字符做 URL 转义）；
-   - 未勾选 / `http(s)://`、`//`、相对路径、站点内路径 → 原样保留；
+   - 相对路径会先按文章所在文件夹解析：文件存在 → 正常分组；不存在 → 未识别项（可点“浏览”指定本机文件）；\n   - 未勾选 / `http(s)://`、`//`、站点内路径（以 `/` 开头）、无扩展名的页面链接 → 原样保留；
    - 同名不同源文件自动加 `-2`、`-3` 后缀，避免互相覆盖；
    - 未识别项若指定了本机文件，则按同样规则复制并改写；
 3. 生成 front-matter：`title` / `date` / `tags`，原文件里其它字段（如 `categories`、`updated`）原样保留；
@@ -230,7 +230,7 @@ docs/screenshots/              # README 截图
 - 待发布文章的草稿保存在本次会话内（关闭程序后不保留），没有写入 Hexo 的 `source/_drafts`。
 - 文件中用作“分节标题”的注释（例如 `# Site`）会显示为紧随其后的第一个配置项的描述——这是忠实于文件顺序的展示方式。
 - front-matter 只映射 `title` / `date` / `tags`（`tags:` 的块序列写法也能识别），其它键原样保留；日期秒精度受界面时间选择器限制（没有单独秒输入时按 `00` 秒写入）。
-- 资源链接只处理 Markdown 的 `![alt](url)` / `[text](url)`；HTML 的 `<img src>` 不处理；路径中带右括号 `)` 的链接不解析。
+- 资源链接只处理 Markdown 的 `![alt](url)` / `[text](url)`（本机绝对路径或相对文章目录的路径；相对路径按文章所在文件夹解析，无扩展名的页面链接会被忽略）；HTML 的 `<img src>` 不处理；路径中带右括号 `)` 的链接不解析。
 - 主题配置编辑按文件缩进展开，不提供分区排序与键名翻译；文章正文富文本编辑、单实例限制未实现。
 
 ## 10. 常见问题

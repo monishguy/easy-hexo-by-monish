@@ -70,7 +70,8 @@ public static class ArticlePublisher
         var result = new PublishResult();
         Directory.CreateDirectory(project.PostsPath);
 
-        var assets = AssetService.Process(project.RootPath, request.Title, request.Body, request.AssetSelections);
+        var articleDirectory = string.IsNullOrEmpty(request.SourcePath) ? null : Path.GetDirectoryName(request.SourcePath);
+        var assets = AssetService.Process(project.RootPath, request.Title, request.Body, request.AssetSelections, articleDirectory);
         result.AssetsCopied = assets.Copied.Count;
         result.AssetFolder = assets.AssetFolder;
         result.Warnings.AddRange(assets.Warnings);

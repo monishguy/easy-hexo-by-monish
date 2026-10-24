@@ -622,7 +622,8 @@ public sealed partial class PublishPage : Page
 
         try
         {
-            var links = AssetService.Scan(body);
+            var articleDirectory = string.IsNullOrEmpty(_editing?.SourcePath) ? null : Path.GetDirectoryName(_editing.SourcePath);
+            var links = AssetService.Scan(body, articleDirectory);
             var imageItems = new List<AssetItemVm>();
             var fileItems = new List<AssetItemVm>();
             var unknownItems = new List<AssetItemVm>();
