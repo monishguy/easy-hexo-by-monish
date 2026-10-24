@@ -98,6 +98,7 @@ public sealed partial class MainWindow : Window
         {
             "config" => typeof(ConfigEditorPage),
             "publish" => typeof(PublishPage),
+            "run" => typeof(RunPage),
             "settings" => typeof(SettingsPage),
             _ => null,
         };

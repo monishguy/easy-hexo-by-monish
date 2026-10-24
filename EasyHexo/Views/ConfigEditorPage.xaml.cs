@@ -6,6 +6,7 @@ using EasyHexo.Models;
 using EasyHexo.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage;
 
@@ -55,6 +56,7 @@ public sealed partial class ConfigEditorPage : Page
     private ConfigEntry? _focusEntry;
     private string _focusOldValue = string.Empty;
     private ComboBox? _focusedCombo;
+    private bool _suppressHeroEvents;
 
     public ConfigEditorPage()
     {
@@ -93,6 +95,7 @@ public sealed partial class ConfigEditorPage : Page
         var project = AppState.Current.Project;
         if (project is null)
         {
+            HeroCard.Visibility = Visibility.Collapsed;
             ShowEmpty(Lang.T("root.none"), showPickButton: true);
             UpdateStats();
             UpdateThemeCard();
@@ -111,6 +114,7 @@ public sealed partial class ConfigEditorPage : Page
 
         if (!File.Exists(_configPath))
         {
+            HeroCard.Visibility = Visibility.Collapsed;
             ShowEmpty(Lang.T("root.error.config"), showPickButton: true);
             UpdateStats();
             UpdateThemeCard();
@@ -135,6 +139,8 @@ public sealed partial class ConfigEditorPage : Page
             if (_translateKeys)
             {
                 _sections.AddRange(ConfigLayoutService.BuildSections(document.Roots));
+                // 站点信息已经移到顶部“基本信息”，列表里不再重复显示
+                _sections.RemoveAll(section => section.Id == "site");
 
                 var themes = await Task.Run(() => HexoThemeService.Detect(project));
                 _themes.Clear();
@@ -157,9 +163,10 @@ public sealed partial class ConfigEditorPage : Page
             }
 
             EmptyPanel.Visibility = Visibility.Collapsed;
-            RebuildVisible();
+            RebuildVisible(preserveScroll: false);
             UpdateThemeCard();
             UpdateFaviconCard();
+            SyncHeroFromEntries();
 
             var message = Lang.T("config.loaded", _entries.Count);
             if (document.UnparsedLineCount > 0)
@@ -184,8 +191,9 @@ public sealed partial class ConfigEditorPage : Page
 
     // ── 列表构建 ─────────────────────────────────────────────────────
 
-    private void RebuildVisible()
+    private void RebuildVisible(bool preserveScroll = true)
     {
+        var offset = preserveScroll ? GetListVerticalOffset() : 0;
         Rows.Clear();
 
         if (_editingTheme is null && _sections.Count > 0)
@@ -218,7 +226,57 @@ public sealed partial class ConfigEditorPage : Page
             }
         }
 
+        if (preserveScroll)
+        {
+            RestoreListOffset(offset);
+        }
+
         UpdateStats();
+    }
+
+    private double GetListVerticalOffset()
+    {
+        var scrollViewer = FindDescendant<ScrollViewer>(ConfigListView);
+        return scrollViewer?.VerticalOffset ?? 0;
+    }
+
+    private void RestoreListOffset(double offset)
+    {
+        if (offset <= 0.5)
+        {
+            return;
+        }
+
+        ConfigListView.UpdateLayout();
+        FindDescendant<ScrollViewer>(ConfigListView)?.ChangeView(null, offset, null, true);
+
+        var dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        dispatcher?.TryEnqueue(() =>
+        {
+            ConfigListView.UpdateLayout();
+            FindDescendant<ScrollViewer>(ConfigListView)?.ChangeView(null, offset, null, true);
+        });
+    }
+
+    private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            var nested = FindDescendant<T>(child);
+            if (nested is not null)
+            {
+                return nested;
+            }
+        }
+
+        return null;
     }
 
     private void AddRow(ConfigEntry entry)
@@ -325,6 +383,12 @@ public sealed partial class ConfigEditorPage : Page
             return;
         }
 
+        // 列表滚动/回收时模板会先把 Text 清空再赋值，未获得焦点的变化不是用户输入
+        if (textBox.FocusState == FocusState.Unfocused)
+        {
+            return;
+        }
+
         var value = textBox.Text ?? string.Empty;
         if (entry.EditingValue == value)
         {
@@ -339,6 +403,19 @@ public sealed partial class ConfigEditorPage : Page
 
     private void OnTextLostFocus(object sender, RoutedEventArgs e)
     {
+        if (sender is TextBox box &&
+            box.DataContext is ConfigRow { Entry: { IsEditable: true } entry } row &&
+            row.Kind is ConfigEditorKind.Text or ConfigEditorKind.Directory)
+        {
+            var text = box.Text ?? string.Empty;
+            if (entry.EditingValue != text)
+            {
+                entry.EditingValue = text;
+                row.RefreshDirtyState();
+                UpdateStats();
+            }
+        }
+
         if (_focusEntry is not null && _focusEntry.EditingValue != _focusOldValue)
         {
             PushUndo(_focusEntry, _focusOldValue, _focusEntry.Key);
@@ -357,6 +434,12 @@ public sealed partial class ConfigEditorPage : Page
             row.Entry is { IsEditable: true } entry)
         {
             if (row.Kind != ConfigEditorKind.Bool)
+            {
+                return;
+            }
+
+            // 列表回收时 IsOn 会被重置，未获得焦点的变化不是用户操作
+            if (toggle.FocusState == FocusState.Unfocused)
             {
                 return;
             }
@@ -502,6 +585,12 @@ public sealed partial class ConfigEditorPage : Page
 
     private void CommitValue(ConfigEntry entry, string newValue, ConfigRow row)
     {
+        CommitValue(entry, newValue, row.Key);
+        row.RefreshDirtyState();
+    }
+
+    private void CommitValue(ConfigEntry entry, string newValue, string label)
+    {
         var oldValue = entry.EditingValue;
         if (oldValue == newValue)
         {
@@ -509,8 +598,7 @@ public sealed partial class ConfigEditorPage : Page
         }
 
         entry.EditingValue = newValue;
-        PushUndo(entry, oldValue, row.Key);
-        row.RefreshDirtyState();
+        PushUndo(entry, oldValue, label);
         UpdateStats();
     }
 
@@ -536,6 +624,7 @@ public sealed partial class ConfigEditorPage : Page
             pendingEntry.EditingValue = _focusOldValue;
             _focusEntry = null;
             RebuildVisible();
+            SyncHeroFromEntries();
             UpdateUndoButton();
             ShowMessage(InfoBarSeverity.Informational, Lang.T("config.undone", label));
             return;
@@ -551,6 +640,7 @@ public sealed partial class ConfigEditorPage : Page
         step.Entry.EditingValue = step.OldValue;
         _focusEntry = null;
         RebuildVisible();
+        SyncHeroFromEntries();
         UpdateUndoButton();
         ShowMessage(InfoBarSeverity.Informational, Lang.T("config.undone", step.Label));
     }
@@ -566,6 +656,7 @@ public sealed partial class ConfigEditorPage : Page
             ? string.Empty
             : Lang.T("config.stats", editable, dirty);
         ApplyButton.IsEnabled = dirty > 0;
+        UpdateHeroDirtyState();
     }
 
     private async void OnApplyClick(object sender, RoutedEventArgs e)
@@ -972,6 +1063,158 @@ public sealed partial class ConfigEditorPage : Page
         return string.Join(".", keys);
     }
 
+    // ── 顶部基本信息 ─────────────────────────────────────────────────
+
+    private ConfigEntry? FindEntry(string path) =>
+        _entries.FirstOrDefault(entry => entry.IsEditable && BuildPath(entry) == path);
+
+    private void SyncHeroFromEntries()
+    {
+        var siteMode = _editingTheme is null && _document is not null;
+        HeroCard.Visibility = siteMode ? Visibility.Visible : Visibility.Collapsed;
+        if (!siteMode)
+        {
+            return;
+        }
+
+        _suppressHeroEvents = true;
+        try
+        {
+            SyncHeroText(HeroTitleBox, "title");
+            SyncHeroText(HeroAuthorBox, "author");
+            SyncHeroText(HeroDescriptionBox, "description");
+            SyncHeroText(HeroKeywordsBox, "keywords");
+            SyncHeroCombo(HeroLanguageCombo, "language");
+            SyncHeroCombo(HeroTimezoneCombo, "timezone");
+        }
+        finally
+        {
+            _suppressHeroEvents = false;
+        }
+
+        UpdateHeroDirtyState();
+    }
+
+    private void SyncHeroText(TextBox box, string path)
+    {
+        var entry = FindEntry(path);
+        box.IsEnabled = entry is not null;
+        box.Text = entry?.EditingValue ?? string.Empty;
+    }
+
+    private void SyncHeroCombo(ComboBox combo, string path)
+    {
+        if (combo.ItemsSource is null)
+        {
+            combo.ItemsSource = ConfigEditorMetadata.Resolve(path, string.Empty, _themeOptionNames).Options;
+        }
+
+        var entry = FindEntry(path);
+        combo.IsEnabled = entry is not null;
+        combo.Text = entry?.EditingValue ?? string.Empty;
+    }
+
+    private void UpdateHeroDirtyState()
+    {
+        SetHeroDirtyDot(HeroTitleDirty, "title");
+        SetHeroDirtyDot(HeroAuthorDirty, "author");
+        SetHeroDirtyDot(HeroDescriptionDirty, "description");
+        SetHeroDirtyDot(HeroKeywordsDirty, "keywords");
+        SetHeroDirtyDot(HeroLanguageDirty, "language");
+        SetHeroDirtyDot(HeroTimezoneDirty, "timezone");
+    }
+
+    private void SetHeroDirtyDot(TextBlock dot, string path)
+    {
+        var entry = FindEntry(path);
+        dot.Visibility = entry?.IsDirty == true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnHeroTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_suppressHeroEvents || sender is not TextBox box || box.Tag is not string path)
+        {
+            return;
+        }
+
+        var entry = FindEntry(path);
+        if (entry is null || entry.EditingValue == (box.Text ?? string.Empty))
+        {
+            return;
+        }
+
+        entry.EditingValue = box.Text ?? string.Empty;
+        UpdateHeroDirtyState();
+        UpdateStats();
+        UpdateUndoButton();
+    }
+
+    private void OnHeroGotFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement element && element.Tag is string path)
+        {
+            var entry = FindEntry(path);
+            if (entry is not null)
+            {
+                _focusEntry = entry;
+                _focusOldValue = entry.EditingValue;
+            }
+        }
+    }
+
+    private void OnHeroTextLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_focusEntry is not null && _focusEntry.EditingValue != _focusOldValue)
+        {
+            PushUndo(_focusEntry, _focusOldValue, _focusEntry.Key);
+        }
+
+        _focusEntry = null;
+        UpdateUndoButton();
+    }
+
+    private void OnHeroComboSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressHeroEvents || sender is not ComboBox combo || combo.Tag is not string path)
+        {
+            return;
+        }
+
+        if (combo.SelectedItem is not string selected)
+        {
+            return;
+        }
+
+        var entry = FindEntry(path);
+        if (entry is null || entry.EditingValue == selected)
+        {
+            return;
+        }
+
+        CommitValue(entry, selected, entry.Key);
+        UpdateHeroDirtyState();
+    }
+
+    private void OnHeroComboLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_suppressHeroEvents || sender is not ComboBox combo || combo.Tag is not string path)
+        {
+            return;
+        }
+
+        var entry = FindEntry(path);
+        if (entry is null)
+        {
+            return;
+        }
+
+        var text = (combo.Text ?? string.Empty).Trim();
+        if (entry.EditingValue != text)
+        {
+            CommitValue(entry, text, entry.Key);
+            UpdateHeroDirtyState();
+        }
+    }
     private void ShowEmpty(string message, bool showPickButton)
     {
         EmptyMessageText.Text = message;

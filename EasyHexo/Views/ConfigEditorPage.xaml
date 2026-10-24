@@ -11,11 +11,12 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- 标题 + 操作栏（撤回 / 展开收起 / 重载 / 应用到配置） -->
+        <!-- 标题 + 操作栏 -->
         <Grid Grid.Row="0" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -62,79 +63,154 @@
             </StackPanel>
         </Grid>
 
-        <!-- 主题 + 站点图标 -->
-        <Grid Grid.Row="1" Margin="0,0,0,10" ColumnSpacing="10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+        <!-- 基本信息：最重要的信息放在最上面 -->
+        <Border x:Name="HeroCard" Grid.Row="1" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
+            <Grid ColumnSpacing="20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-            <Border Style="{StaticResource CardBorderStyle}" Padding="12">
-                <StackPanel Spacing="8">
-                    <Grid>
+                <StackPanel Spacing="12">
+                    <TextBlock
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        l:Trans.Text="config.hero.basic" />
+
+                    <Grid ColumnSpacing="14" RowSpacing="10">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock
-                            Style="{StaticResource BodyStrongTextBlockStyle}"
-                            l:Trans.Text="config.theme.title" />
-                        <TextBlock
-                            x:Name="ThemeHintText"
-                            Grid.Column="1"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            Style="{StaticResource CaptionTextBlockStyle}"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            TextWrapping="Wrap" />
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    l:Trans.Text="config.hero.title" />
+                                <TextBlock x:Name="HeroTitleDirty" Text="●" Foreground="#F59E0B" FontSize="10" Visibility="Collapsed" />
+                            </StackPanel>
+                            <TextBox
+                                x:Name="HeroTitleBox"
+                                AutomationProperties.AutomationId="HeroTitle"
+                                Tag="title"
+                                MinHeight="32"
+                                TextChanged="OnHeroTextChanged"
+                                GotFocus="OnHeroGotFocus"
+                                LostFocus="OnHeroTextLostFocus" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="0" Grid.Column="1" Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    l:Trans.Text="config.hero.author" />
+                                <TextBlock x:Name="HeroAuthorDirty" Text="●" Foreground="#F59E0B" FontSize="10" Visibility="Collapsed" />
+                            </StackPanel>
+                            <TextBox
+                                x:Name="HeroAuthorBox"
+                                AutomationProperties.AutomationId="HeroAuthor"
+                                Tag="author"
+                                MinHeight="32"
+                                TextChanged="OnHeroTextChanged"
+                                GotFocus="OnHeroGotFocus"
+                                LostFocus="OnHeroTextLostFocus" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    l:Trans.Text="config.hero.language" />
+                                <TextBlock x:Name="HeroLanguageDirty" Text="●" Foreground="#F59E0B" FontSize="10" Visibility="Collapsed" />
+                            </StackPanel>
+                            <ComboBox
+                                x:Name="HeroLanguageCombo"
+                                AutomationProperties.AutomationId="HeroLanguage"
+                                Tag="language"
+                                MinHeight="32"
+                                HorizontalAlignment="Stretch"
+                                IsEditable="True"
+                                SelectionChanged="OnHeroComboSelectionChanged"
+                                LostFocus="OnHeroComboLostFocus" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    l:Trans.Text="config.hero.description" />
+                                <TextBlock x:Name="HeroDescriptionDirty" Text="●" Foreground="#F59E0B" FontSize="10" Visibility="Collapsed" />
+                            </StackPanel>
+                            <TextBox
+                                x:Name="HeroDescriptionBox"
+                                AutomationProperties.AutomationId="HeroDescription"
+                                Tag="description"
+                                MinHeight="32"
+                                TextChanged="OnHeroTextChanged"
+                                GotFocus="OnHeroGotFocus"
+                                LostFocus="OnHeroTextLostFocus" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1" Grid.Column="2" Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    l:Trans.Text="config.hero.timezone" />
+                                <TextBlock x:Name="HeroTimezoneDirty" Text="●" Foreground="#F59E0B" FontSize="10" Visibility="Collapsed" />
+                            </StackPanel>
+                            <ComboBox
+                                x:Name="HeroTimezoneCombo"
+                                AutomationProperties.AutomationId="HeroTimezone"
+                                Tag="timezone"
+                                MinHeight="32"
+                                HorizontalAlignment="Stretch"
+                                IsEditable="True"
+                                SelectionChanged="OnHeroComboSelectionChanged"
+                                LostFocus="OnHeroComboLostFocus" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    l:Trans.Text="config.hero.keywords" />
+                                <TextBlock x:Name="HeroKeywordsDirty" Text="●" Foreground="#F59E0B" FontSize="10" Visibility="Collapsed" />
+                            </StackPanel>
+                            <TextBox
+                                x:Name="HeroKeywordsBox"
+                                AutomationProperties.AutomationId="HeroKeywords"
+                                Tag="keywords"
+                                MinHeight="32"
+                                TextChanged="OnHeroTextChanged"
+                                GotFocus="OnHeroGotFocus"
+                                LostFocus="OnHeroTextLostFocus" />
+                        </StackPanel>
                     </Grid>
-
-                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <ComboBox
-                            x:Name="ThemeCombo"
-                            MinWidth="150"
-                            HorizontalAlignment="Left"
-                            AutomationProperties.AutomationId="ThemeCombo"
-                            SelectionChanged="OnThemeComboChanged" />
-                        <Button
-                            x:Name="SwitchThemeButton"
-                            AutomationProperties.AutomationId="SwitchThemeButton"
-                            Click="OnSwitchThemeClick"
-                            l:Trans.Content="config.theme.switch" />
-                        <Button
-                            x:Name="EditThemeConfigButton"
-                            AutomationProperties.AutomationId="EditThemeConfigButton"
-                            Click="OnEditThemeConfigClick"
-                            l:Trans.Content="config.theme.edit" />
-                        <Button
-                            x:Name="BackToSiteButton"
-                            AutomationProperties.AutomationId="BackToSiteButton"
-                            Visibility="Collapsed"
-                            Click="OnBackToSiteClick"
-                            l:Trans.Content="config.theme.back" />
-                    </StackPanel>
-
-                    <TextBlock
-                        x:Name="ThemeModeText"
-                        Visibility="Collapsed"
-                        TextWrapping="Wrap"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                 </StackPanel>
-            </Border>
 
-            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="12">
-                <Grid ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
+                <StackPanel Grid.Column="1" Width="210" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Top">
+                    <TextBlock
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        HorizontalAlignment="Center"
+                        l:Trans.Text="config.hero.icon" />
                     <Border
-                        Width="44"
-                        Height="44"
-                        CornerRadius="8"
+                        Width="112"
+                        Height="112"
+                        HorizontalAlignment="Center"
+                        CornerRadius="14"
                         Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                         BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                         BorderThickness="1">
@@ -142,49 +218,101 @@
                             <FontIcon
                                 x:Name="FaviconPlaceholder"
                                 Glyph="&#xEB9F;"
-                                FontSize="18"
+                                FontSize="34"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <Image
-                                x:Name="FaviconImage"
-                                Visibility="Collapsed"
-                                Stretch="Uniform" />
+                            <Image x:Name="FaviconImage" Visibility="Collapsed" Stretch="Uniform" />
                         </Grid>
                     </Border>
-
-                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                        <TextBlock
-                            Style="{StaticResource BodyStrongTextBlockStyle}"
-                            l:Trans.Text="config.favicon.title" />
-                        <TextBlock
-                            x:Name="FaviconValueText"
-                            Style="{StaticResource CaptionTextBlockStyle}"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            TextWrapping="Wrap"
-                            IsTextSelectionEnabled="True" />
-                    </StackPanel>
-
+                    <TextBlock
+                        x:Name="FaviconValueText"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        HorizontalAlignment="Center"
+                        TextAlignment="Center"
+                        TextWrapping="Wrap"
+                        MaxWidth="210" />
                     <Button
-                        Grid.Column="2"
                         x:Name="ChangeFaviconButton"
-                        AutomationProperties.AutomationId="ChangeFaviconButton"
-                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
                         Click="OnChangeFaviconClick"
                         l:Trans.Content="config.favicon.change" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 主题 -->
+        <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10" Padding="12">
+            <StackPanel Spacing="8">
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        l:Trans.Text="config.theme.title" />
+                    <ComboBox
+                        x:Name="ThemeCombo"
+                        Grid.Column="1"
+                        MinWidth="150"
+                        VerticalAlignment="Center"
+                        AutomationProperties.AutomationId="ThemeCombo"
+                        SelectionChanged="OnThemeComboChanged" />
+                    <Button
+                        x:Name="SwitchThemeButton"
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        AutomationProperties.AutomationId="SwitchThemeButton"
+                        Click="OnSwitchThemeClick"
+                        l:Trans.Content="config.theme.switch" />
+                    <Button
+                        x:Name="EditThemeConfigButton"
+                        Grid.Column="3"
+                        VerticalAlignment="Center"
+                        AutomationProperties.AutomationId="EditThemeConfigButton"
+                        Click="OnEditThemeConfigClick"
+                        l:Trans.Content="config.theme.edit" />
+                    <Button
+                        x:Name="BackToSiteButton"
+                        Grid.Column="4"
+                        HorizontalAlignment="Left"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed"
+                        AutomationProperties.AutomationId="BackToSiteButton"
+                        Click="OnBackToSiteClick"
+                        l:Trans.Content="config.theme.back" />
                 </Grid>
-            </Border>
-        </Grid>
+                <TextBlock
+                    x:Name="ThemeModeText"
+                    Visibility="Collapsed"
+                    TextWrapping="Wrap"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                <TextBlock
+                    x:Name="ThemeHintText"
+                    TextWrapping="Wrap"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+        </Border>
 
         <InfoBar
             x:Name="StatusBar"
-            Grid.Row="2"
+            Grid.Row="3"
             IsOpen="False"
             IsClosable="True"
             Margin="0,0,0,8" />
 
-        <!-- 配置列表 -->
-        <Grid Grid.Row="3">
+        <!-- 其它配置（分区列表） -->
+        <Grid Grid.Row="4">
             <ListView
                 x:Name="ConfigListView"
                 AutomationProperties.AutomationId="ConfigList"
@@ -196,7 +324,6 @@
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="m:ConfigRow">
                         <Grid>
-                            <!-- 分区标题 -->
                             <Border
                                 Visibility="{x:Bind SectionVisibility}"
                                 Margin="0,8,0,2"
@@ -233,7 +360,6 @@
                                 </Grid>
                             </Border>
 
-                            <!-- 配置项 -->
                             <Border
                                 Visibility="{x:Bind ContentVisibility}"
                                 Background="{x:Bind RowBackground, Mode=OneWay}"
@@ -383,7 +509,6 @@
                 </ListView.ItemTemplate>
             </ListView>
 
-            <!-- 未选择 / 无法读取时的空状态 -->
             <StackPanel
                 x:Name="EmptyPanel"
                 Visibility="Collapsed"
@@ -412,13 +537,9 @@
 
         <TextBlock
             x:Name="StatsText"
-            Grid.Row="4"
+            Grid.Row="5"
             Margin="0,8,0,0"
             Style="{StaticResource CaptionTextBlockStyle}"
             Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
     </Grid>
 </Page>
-
-
-
-

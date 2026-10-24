@@ -54,6 +54,11 @@
                         <FontIcon Glyph="&#xE898;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem x:Name="NavRun" Tag="run" l:Trans.Content="nav.run">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE768;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItem x:Name="NavSettings" Tag="settings" l:Trans.Content="nav.settings">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE713;" />

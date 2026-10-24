@@ -4,9 +4,11 @@
 
 > 仓库地址：<https://github.com/monishguy/easy-hexo-by-monish>
 > 许可证：MIT（见仓库根目录 [LICENSE](LICENSE)）　|　技术栈：**C# + WinUI 3（Windows App SDK 1.7）+ .NET 8**
-> 当前版本：**1.1.1**（1.1.1：支持文章内相对路径的图片/附件，相对文章所在目录解析，不存在则列为未识别项）
+> 当前版本：**1.2.0**（1.2.0：新增“运行”页执行 Hexo 命令并实时显示输出；配置页改为顶部基本信息 + 下方分区；修复展开/收起后跳回顶部）
 
 ![配置编辑](docs/screenshots/config-editor.png)
+
+![运行](docs/screenshots/run.png)
 
 | 发布文章 | 设置（浅色主题） |
 | --- | --- |
@@ -70,7 +72,8 @@ msbuild EasyHexo.sln /p:Platform=x64 /p:Configuration=Release
 ```powershell
 msbuild EasyHexo\EasyHexo.csproj /p:Configuration=Release /p:Platform=x64 `
         /p:WindowsPackageType=None /p:RuntimeIdentifier=win-x64
-# 产物：EasyHexo\bin\x64\Release\net8.0-windows10.0.19041.0\win-x64\EasyHexo.exe
+# 产物：EasyHexo\bin\x64\Release
+et8.0-windows10.0.19041.0\win-x64\EasyHexo.exe
 ```
 
 **没有安装 Visual Studio 时**，可以用仓库自带脚本构建可直接运行的 zip（内部会手工合并 `resources.pri`）：
@@ -90,9 +93,12 @@ pwsh tools\build-unpackaged.ps1 -FrameworkDependent     # 不打包 .NET 运行�
 - 布尔项用开关修改后写回 `trailing_index: false`；下拉项（语言 / 时区 / 永久链接等）正常显示与写回；
 - 目录项有“浏览”按钮，数字项（`per_page`）使用 NumberBox；
 - 一键切换主题写入 `theme: minimal`；编辑 `themes/landscape/_config.yml` 并应用成功；
-- 更换站点图标：图片复制到 `source\newfavicon.png`，配置写为 `favicon: /newfavicon.png`；
+- 更换站点图标：图片复制到 `source
+ewfavicon.png`，配置写为 `favicon: /newfavicon.png`；
 - 发布文章：取消勾选的图片保持原链接且不复制、勾选的附件复制并改写为 `/你好%20Hexo/doc.zip`；
 - 拖入/浏览导入 `.md` 后出现在“待发布”列表；修改标题后切到别的文章再切回，草稿内容正确恢复；
+- 配置列表滚动后展开/收起分组，滚动位置保持不变（不再跳回顶部）；顶部“基本信息”布局与站点图标预览正常，改值后高亮、可撤回；
+- “运行”页执行命令时显示进度圈，输出实时出现在框内，结束后显示退出码，可停止；
 - 窗口最小尺寸生效（1040×680），侧栏收起时隐藏根目录、展开后显示；
 - 浅色 / 深色 / 跟随系统三种主题即时生效；
 - 中英文切换、简体中文键名翻译、窗口缩放布局均正常。
@@ -111,6 +117,7 @@ EasyHexo/
   Views/
     ConfigEditorPage.xaml(.cs)   # 配置编辑（分区 / 可视化编辑器 / 撤销 / 主题 / 图标）
     PublishPage.xaml(.cs)        # 发布文章（待发布草稿 / 已发布文章 / 资源分组）
+    RunPage.xaml(.cs)            # 运行 Hexo 命令（生成 / 清理 / 预览 / 部署 / 新建…）+ 进度圈与输出框
     SettingsPage.xaml(.cs)       # 设置（语言 / 主题 / 根目录 / 关于）
   Models/
     ConfigRow.cs               # 配置列表行 ViewModel（分区标题 / 分组 / 各类型编辑器）
@@ -146,7 +153,7 @@ docs/screenshots/              # README 截图
 | 需求 | 实现 |
 | --- | --- |
 | 最小缩放尺寸、缩放不错乱 | `MainWindow` 通过 `OverlappedPresenter.PreferredMinimumWidth/Height` 限制 1040×680；列表列宽、日期选择器等按星号列自适应 |
-| 侧栏“当前 Hexo 根目录”只在侧栏展开或窗口较宽时显示 | `NavigationView.PaneDisplayMode=Auto` + 展开阈值 1260 / 紧凑阈值 800；`PaneOpened/PaneClosed/DisplayModeChanged` 时切换 `PaneFooter` 可见性 |
+| 侧栏“当前站点”只在侧栏展开或窗口较宽时显示 | `NavigationView.PaneDisplayMode=Auto` + 展开阈值 1260 / 紧凑阈值 800；`PaneOpened/PaneClosed/DisplayModeChanged` 时切换 `PaneFooter` 可见性 |
 | 黑 / 亮 / 跟随系统主题 | `AppState.Theme` + `ThemeService`，`MainWindow` 对根 Grid 设置 `RequestedTheme`；设置页切换立即生效并写入 `settings.json` |
 
 ### 5.2 配置编辑
@@ -157,6 +164,8 @@ docs/screenshots/              # README 截图
 | 布尔 / 选项 / 数字 / 目录可视化编辑 | `ConfigEditorMetadata` 按“完整键路径”映射：开关写 true/false；下拉（语言、时区、日期/时间格式、永久链接、语法高亮器、布局、更新时间方式、排序方式、部署类型、主题）；NumberBox（`per_page` 等）；目录项文本 + “浏览”选择文件夹并转成相对路径 |
 | 改动项高亮 | `ConfigRow.RefreshDirtyState()`，行背景/边框变琥珀色并显示 ● |
 | 撤回上一步 | 顶部“撤回上一步”：文本框按一次编辑（获得焦点时记快照、失焦或点撤回时回退）算一步；开关 / 下拉 / 数字每次改动算一步；应用配置后清空 |
+| 顶部“基本信息”优先展示 | 站点名称 / 作者 / 站点描述 / 关键词 / 语言 / 时区显示在页面顶部，右侧放大显示站点图标；其余配置在下方按分区依次铺开 |
+| 展开 / 收起后保持滚动位置 | `RebuildVisible` 重建列表前后读取并恢复 `ScrollViewer.VerticalOffset`，不会跳回顶部 |
 | 注释转只读描述 | 上方整行注释 + 行尾注释进入 `ConfigEntry.Comment` |
 | 简体中文键名翻译（仅显示） | `ConfigKeyTranslator`：中文为主标签、英文原名为灰色提示；写回始终用英文键 |
 | 顶部“应用到配置”只改改动行 | `ConfigYamlService.Apply`，写前备份 `*.easyhexo.bak` |
@@ -179,6 +188,14 @@ docs/screenshots/              # README 截图
 | 未识别项“浏览”指定本机文件后自动替换并复制 | `OnAssetBrowseClick` 记录路径 → `AssetSelection.SourcePathOverride` → 发布时复制并改写链接 |
 | 取消勾选的资源保持原样 | `AssetSelection.Include=false`，链接与文件都不动 |
 | 已发布文章可重新编辑发布 | 左侧“已发布文章”选择 → 载入表单 → 写回原路径 |
+
+### 5.4 运行（对应原来的 Hexo.bat）
+
+| 需求 | 实现 |
+| --- | --- |
+| 原来 Hexo.bat 的菜单功能 | 运行页提供：生成、清理、本地预览、部署、生成并部署、强制生成、监听生成、列出文章、查看版本、新建文章 / 页面、发布草稿；都在当前所选站点目录执行 |
+| 运行相关功能时显示圆圈进度条 | 执行期间 `ProgressRing` 显示，状态栏提示“正在执行：命令” |
+| 框内展示命令输出 | 输出框实时追加 stdout / stderr（UTF-8），显示命令、输出与“完成（退出码）”；可停止 / 清空 |
 
 ## 6. `_config.yml` 写回规则
 
@@ -203,7 +220,8 @@ docs/screenshots/              # README 截图
 2. 正文里形如 `![alt](E:\images\a.png)`、`[text](D:\files\a.zip)` 的**本机绝对路径**，或形如 `..\Downloads\boot.img`、`images\a.png` 的**相对文章所在文件夹的相对路径**：
    - 在“资源文件处理”里按 图片 / 文件 / 未识别项 分组列出，勾选的项才会处理；
    - 复制到 `Hexo根目录\source\<标题>\`，链接改写为 `/<标题>/<文件名>`（空格等特殊字符做 URL 转义）；
-   - 相对路径会先按文章所在文件夹解析：文件存在 → 正常分组；不存在 → 未识别项（可点“浏览”指定本机文件）；\n   - 未勾选 / `http(s)://`、`//`、站点内路径（以 `/` 开头）、无扩展名的页面链接 → 原样保留；
+   - 相对路径会先按文章所在文件夹解析：文件存在 → 正常分组；不存在 → 未识别项（可点“浏览”指定本机文件）；
+   - 未勾选 / `http(s)://`、`//`、站点内路径（以 `/` 开头）、无扩展名的页面链接 → 原样保留；
    - 同名不同源文件自动加 `-2`、`-3` 后缀，避免互相覆盖；
    - 未识别项若指定了本机文件，则按同样规则复制并改写；
 3. 生成 front-matter：`title` / `date` / `tags`，原文件里其它字段（如 `categories`、`updated`）原样保留；
@@ -232,6 +250,8 @@ docs/screenshots/              # README 截图
 - front-matter 只映射 `title` / `date` / `tags`（`tags:` 的块序列写法也能识别），其它键原样保留；日期秒精度受界面时间选择器限制（没有单独秒输入时按 `00` 秒写入）。
 - 资源链接只处理 Markdown 的 `![alt](url)` / `[text](url)`（本机绝对路径或相对文章目录的路径；相对路径按文章所在文件夹解析，无扩展名的页面链接会被忽略）；HTML 的 `<img src>` 不处理；路径中带右括号 `)` 的链接不解析。
 - 主题配置编辑按文件缩进展开，不提供分区排序与键名翻译；文章正文富文本编辑、单实例限制未实现。
+- 运行页需要本机已安装 Hexo（PATH 中能找到 `hexo`）；“本地预览 / 监听生成”会持续运行，点“停止”结束。
+- 顶部“基本信息”只编辑配置里已存在的键（例如没有 `keywords` 就不会凭空创建）。
 
 ## 10. 常见问题
 
