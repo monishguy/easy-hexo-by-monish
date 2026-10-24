@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:l="using:EasyHexo.Localization">
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="32" />
             <RowDefinition Height="*" />
@@ -32,8 +32,15 @@
             IsBackButtonVisible="Collapsed"
             IsSettingsVisible="False"
             IsPaneToggleButtonVisible="True"
-            PaneDisplayMode="Left"
+            PaneDisplayMode="Auto"
+            CompactPaneLength="48"
             OpenPaneLength="248"
+            ExpandedModeThresholdWidth="1260"
+            CompactModeThresholdWidth="800"
+            IsPaneOpen="True"
+            PaneOpened="OnNavPaneChanged"
+            PaneClosed="OnNavPaneChanged"
+            DisplayModeChanged="OnNavDisplayModeChanged"
             SelectionChanged="OnNavSelectionChanged">
 
             <NavigationView.MenuItems>
@@ -55,7 +62,8 @@
             </NavigationView.MenuItems>
 
             <NavigationView.PaneFooter>
-                <StackPanel Margin="12,8,12,16" Spacing="2">
+                <!-- 只在侧栏展开（或窗口足够宽）时显示；收起为图标栏时隐藏 -->
+                <StackPanel x:Name="RootInfoPanel" Margin="12,8,12,16" Spacing="2">
                     <TextBlock
                         Style="{StaticResource CaptionTextBlockStyle}"
                         l:Trans.Text="root.current"

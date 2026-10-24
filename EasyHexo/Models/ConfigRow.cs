@@ -1,32 +1,51 @@
+using System.ComponentModel;
 using System.Globalization;
 using EasyHexo.Localization;
 using EasyHexo.Services;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
 
 namespace EasyHexo.Models;
 
 /// <summary>
-/// 配置列表里的一行（界面 ViewModel）。每次展开 / 收起都会重新生成行对象，
-/// 当前输入内容保存在 <see cref="ConfigEntry.EditingValue"/> 里，因此不会丢。
+/// 配置列表里的一行（界面 ViewModel）。
 ///
-/// 简体中文界面下，键名通过 <see cref="ConfigKeyTranslator"/> 显示中文译名；
-/// 英文原名只作为提示（描述行 / ToolTip）展示，写回文件时仍使用原始英文键名。
+/// 通用行有三种形态：
+/// * 分区标题行（IsSection = true）：用于“站点信息 / 网址与链接 / …”这类视觉分区；
+/// * 分组行：有子项，可展开 / 收起；
+/// * 配置项行：按 <see cref="ConfigEditorMetadata"/> 决定用文本框 / 开关 / 下拉 / 数字框 / 目录选择。
+///
+/// 当前输入内容保存在 <see cref="ConfigEntry.EditingValue"/> 里，行对象在展开 / 收起 /
+/// 撤回时会重建，所以编辑内容不会丢。
 /// </summary>
-public sealed class ConfigRow
+public sealed class ConfigRow : INotifyPropertyChanged
 {
-    public ConfigRow(ConfigEntry entry)
+    private static readonly Brush DirtyBackgroundBrush =
+        new SolidColorBrush(ColorHelper.FromArgb(0x2E, 0xFF, 0xC1, 0x07));
+
+    private static readonly Brush DirtyBorderBrush =
+        new SolidColorBrush(ColorHelper.FromArgb(0xA0, 0xF5, 0x9E, 0x0B));
+
+    private ConfigRow()
+    {
+    }
+
+    public ConfigRow(ConfigEntry entry, string path, bool translateKeys, IReadOnlyList<string>? themeOptions)
     {
         Entry = entry;
+        EditorAutomationId = "cfg-" + path;
+        IsSection = false;
         Indent = new Thickness(entry.Depth * 18, 0, 0, 0);
+        SectionVisibility = Visibility.Collapsed;
+        ContentVisibility = Visibility.Visible;
 
-        var path = BuildPath(entry);
-        var displayName = ConfigKeyTranslator.Translate(path, entry.Key);
-        var isTranslated = !string.Equals(displayName, entry.Key, StringComparison.Ordinal);
+        var displayName = translateKeys ? ConfigKeyTranslator.Translate(path, entry.Key) : entry.Key;
+        var isTranslated = translateKeys && !string.Equals(displayName, entry.Key, StringComparison.Ordinal);
 
         Key = entry.IsSequenceItem && entry.Key != "-" ? "– " + displayName : displayName;
         KeyToolTip = isTranslated ? entry.Key : null;
 
-        // 原有注释作为描述（只读）；没有注释时，用英文原名提示对应关系
         Comment = string.IsNullOrWhiteSpace(entry.Comment)
             ? (isTranslated ? entry.Key : string.Empty)
             : entry.Comment;
@@ -34,73 +53,176 @@ public sealed class ConfigRow
 
         ChevronGlyph = entry.HasChildren ? (entry.IsExpanded ? "\uE70D" : "\uE76C") : string.Empty;
         ChevronVisibility = entry.HasChildren ? Visibility.Visible : Visibility.Collapsed;
-        HasChildren = entry.HasChildren;
         CanExpand = entry.HasChildren;
 
         if (entry.HasChildren)
         {
-            ValueText = string.Empty;
             TypeText = Lang.T("config.groupWithCount", entry.Children.Count);
-            EditorVisibility = Visibility.Collapsed;
-            StaticValueVisibility = Visibility.Collapsed;
         }
         else if (entry.IsReadOnly)
         {
             ValueText = entry.RawValue;
-            TypeText = Lang.T("config.readonly");
-            EditorVisibility = Visibility.Collapsed;
             StaticValueVisibility = Visibility.Visible;
+            TypeText = Lang.T("config.readonly");
         }
         else
         {
-            ValueText = entry.EditingValue;
-            TypeText = DescribeType(entry.OriginalValue);
-            EditorVisibility = Visibility.Visible;
-            StaticValueVisibility = Visibility.Collapsed;
+            var spec = ConfigEditorMetadata.Resolve(path, entry.OriginalValue, themeOptions);
+            Kind = spec.Kind;
+
+            switch (spec.Kind)
+            {
+                case ConfigEditorKind.Bool:
+                    BoolValue = !entry.EditingValue.Equals("false", StringComparison.OrdinalIgnoreCase);
+                    BoolVisibility = Visibility.Visible;
+                    TypeText = Lang.T("config.type.bool");
+                    break;
+
+                case ConfigEditorKind.Number:
+                    NumberValue = double.TryParse(
+                        entry.EditingValue,
+                        NumberStyles.Float,
+                        CultureInfo.InvariantCulture,
+                        out var number)
+                        ? number
+                        : 0;
+                    NumberVisibility = Visibility.Visible;
+                    TypeText = Lang.T("config.type.number");
+                    break;
+
+                case ConfigEditorKind.Choice:
+                    ComboItems = spec.Options;
+                    ComboText = entry.EditingValue;
+                    ComboEditable = spec.ComboEditable;
+                    ComboVisibility = Visibility.Visible;
+                    TypeText = Lang.T("config.type.choice");
+                    break;
+
+                case ConfigEditorKind.Directory:
+                    ValueText = entry.EditingValue;
+                    TextVisibility = Visibility.Visible;
+                    DirButtonVisibility = Visibility.Visible;
+                    TypeText = Lang.T("config.type.dir");
+                    break;
+
+                default:
+                    ValueText = entry.EditingValue;
+                    TextVisibility = Visibility.Visible;
+                    TypeText = DescribeType(entry.OriginalValue);
+                    break;
+            }
         }
     }
 
-    public ConfigEntry Entry { get; }
+    public event PropertyChangedEventHandler? PropertyChanged;
 
-    public Thickness Indent { get; }
+    private static Thickness DirtyBorderThickness { get; } = new(1);
 
-    public string Key { get; }
+    private static Thickness NoBorderThickness { get; } = new(0);
 
-    /// <summary>中文译名下显示的英文原名（未翻译时为 null）。</summary>
-    public string? KeyToolTip { get; }
+    public ConfigEntry? Entry { get; }
 
-    public string ValueText { get; }
+    public bool IsSection { get; private set; }
 
-    public string TypeText { get; }
+    // ── 分区标题行 ───────────────────────────────────────────────
 
-    public string Comment { get; }
+    public string SectionId { get; private set; } = string.Empty;
 
-    public string ChevronGlyph { get; }
+    public string SectionTitle { get; private set; } = string.Empty;
 
-    public Visibility ChevronVisibility { get; }
+    public string SectionChevron { get; private set; } = string.Empty;
 
-    public bool HasChildren { get; }
+    public string SectionCountText { get; private set; } = string.Empty;
 
-    public bool CanExpand { get; }
+    public Visibility SectionVisibility { get; private set; } = Visibility.Collapsed;
 
-    public Visibility EditorVisibility { get; }
+    public Visibility ContentVisibility { get; private set; } = Visibility.Visible;
 
-    public Visibility StaticValueVisibility { get; }
+    // ── 配置项行 ─────────────────────────────────────────────────
 
-    public Visibility CommentVisibility { get; }
+    public Thickness Indent { get; private set; }
 
-    private static string BuildPath(ConfigEntry entry)
+    public string Key { get; private set; } = string.Empty;
+
+    public string? KeyToolTip { get; private set; }
+
+    public string ValueText { get; private set; } = string.Empty;
+
+    public string ComboText { get; private set; } = string.Empty;
+
+    public IReadOnlyList<string> ComboItems { get; private set; } = new List<string>();
+
+    public bool ComboEditable { get; private set; } = true;
+
+    public bool BoolValue { get; private set; }
+
+    public double NumberValue { get; private set; }
+
+    public string TypeText { get; private set; } = string.Empty;
+
+    public string Comment { get; private set; } = string.Empty;
+
+    public Visibility CommentVisibility { get; private set; } = Visibility.Collapsed;
+
+    public string ChevronGlyph { get; private set; } = string.Empty;
+
+    public Visibility ChevronVisibility { get; private set; } = Visibility.Collapsed;
+
+    public bool CanExpand { get; private set; }
+
+    public Visibility TextVisibility { get; private set; } = Visibility.Collapsed;
+
+    public Visibility ComboVisibility { get; private set; } = Visibility.Collapsed;
+
+    public Visibility BoolVisibility { get; private set; } = Visibility.Collapsed;
+
+    public Visibility NumberVisibility { get; private set; } = Visibility.Collapsed;
+
+    public Visibility StaticValueVisibility { get; private set; } = Visibility.Collapsed;
+
+    public Visibility DirButtonVisibility { get; private set; } = Visibility.Collapsed;
+
+    public ConfigEditorKind Kind { get; private set; } = ConfigEditorKind.Text;
+
+    /// <summary>供 UI 自动化 / 测试定位控件使用的 ID（cfg-键路径）。</summary>
+    public string EditorAutomationId { get; private set; } = string.Empty;
+
+    public bool IsDirty => Entry?.IsDirty ?? false;
+
+    public Visibility DirtyDotVisibility => IsDirty ? Visibility.Visible : Visibility.Collapsed;
+
+    public Brush? RowBackground => IsDirty ? DirtyBackgroundBrush : null;
+
+    public Brush? RowBorderBrush => IsDirty ? DirtyBorderBrush : null;
+
+    public Thickness RowBorderThickness => IsDirty ? DirtyBorderThickness : NoBorderThickness;
+
+    public static ConfigRow CreateSection(string sectionId, string title, int count, bool expanded)
     {
-        var keys = new List<string>();
-        for (var current = entry; current is not null; current = current.Parent)
+        return new ConfigRow
         {
-            keys.Add(current.Key);
-        }
-
-        keys.Reverse();
-        // 与 ConfigKeyTranslator 的键路径一致，用 "." 连接（例如 pretty_urls.trailing_index）
-        return string.Join(".", keys);
+            IsSection = true,
+            SectionId = sectionId,
+            SectionTitle = title,
+            SectionChevron = expanded ? "\uE70D" : "\uE76C",
+            SectionCountText = Lang.T("config.section.count", count),
+            SectionVisibility = Visibility.Visible,
+            ContentVisibility = Visibility.Collapsed,
+        };
     }
+
+    /// <summary>配置项值被修改后刷新高亮相关的绑定。</summary>
+    public void RefreshDirtyState()
+    {
+        Raise(nameof(IsDirty));
+        Raise(nameof(DirtyDotVisibility));
+        Raise(nameof(RowBackground));
+        Raise(nameof(RowBorderBrush));
+        Raise(nameof(RowBorderThickness));
+    }
+
+    private void Raise(string propertyName) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
     private static string DescribeType(string value)
     {
@@ -109,8 +231,7 @@ public sealed class ConfigRow
             return Lang.T("config.type.text");
         }
 
-        if (value.Equals("true", StringComparison.OrdinalIgnoreCase) ||
-            value.Equals("false", StringComparison.OrdinalIgnoreCase))
+        if (ConfigEditorMetadata.IsBoolValue(value))
         {
             return Lang.T("config.type.bool");
         }

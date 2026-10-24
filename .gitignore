@@ -36,3 +36,8 @@ desktop.ini
 # Release artifacts（由 git archive 生成，不纳入版本库）
 releases/
 *.easyhexo.bak
+
+# 本地测试站点 / UI 自动化脚本（仅开发机使用）
+.testsite/
+.testsite-seed/
+.testtools/

@@ -10,23 +10,104 @@
         AllowDrop="True"
         DragOver="OnDragOver"
         Drop="OnDrop"
-        Margin="24,16,24,16">
+        Margin="20,14,20,14">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="320" />
-            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="12" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- 左：已发布文章（修改日期新到旧） -->
+        <!-- 左：待发布（导入的文章）+ 已发布文章 -->
         <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="12">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0" Margin="0,0,0,8">
+                <!-- 待发布 -->
+                <Grid Grid.Row="0" Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        VerticalAlignment="Center"
+                        l:Trans.Text="publish.drafts" />
+                    <TextBlock
+                        x:Name="DraftsCountText"
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </Grid>
+
+                <ListView
+                    x:Name="DraftListView"
+                    Grid.Row="1"
+                    MaxHeight="170"
+                    ItemsSource="{x:Bind Drafts}"
+                    SelectionMode="Single"
+                    SelectionChanged="OnDraftSelectionChanged"
+                    AutomationProperties.AutomationId="DraftList"
+                    ItemContainerStyle="{StaticResource PostListItemStyle}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="m:ImportDraft">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Spacing="2" Padding="0,2,0,2">
+                                    <TextBlock
+                                        Text="{x:Bind DisplayTitle}"
+                                        TextTrimming="CharacterEllipsis"
+                                        Style="{StaticResource BodyTextBlockStyle}" />
+                                    <TextBlock
+                                        Text="{x:Bind DisplaySubtitle}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        TextTrimming="CharacterEllipsis"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <Button
+                                    Grid.Column="1"
+                                    Width="24"
+                                    Height="24"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    VerticalAlignment="Center"
+                                    Click="OnRemoveDraftClick"
+                                    l:Trans.ToolTip="publish.removeDraft">
+                                    <FontIcon Glyph="&#xE711;" FontSize="10" />
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <TextBlock
+                    x:Name="DraftsEmptyText"
+                    Grid.Row="1"
+                    Margin="4,2,4,2"
+                    TextWrapping="Wrap"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    l:Trans.Text="publish.draftsEmpty" />
+
+                <Border
+                    Grid.Row="2"
+                    Height="1"
+                    Margin="0,8,0,8"
+                    Background="{ThemeResource ControlStrokeColorDefaultBrush}" />
+
+                <!-- 已发布文章 -->
+                <Grid Grid.Row="3" Margin="0,0,0,4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -48,7 +129,7 @@
 
                 <ListView
                     x:Name="PostsListView"
-                    Grid.Row="1"
+                    Grid.Row="4"
                     ItemsSource="{x:Bind Posts}"
                     SelectionMode="Single"
                     SelectionChanged="OnPostSelectionChanged"
@@ -72,7 +153,7 @@
 
                 <TextBlock
                     x:Name="PostsCountText"
-                    Grid.Row="2"
+                    Grid.Row="5"
                     Margin="0,8,0,0"
                     Style="{StaticResource CaptionTextBlockStyle}"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -123,17 +204,12 @@
                             <Button
                                 Style="{StaticResource AccentButtonStyle}"
                                 Click="OnBrowseClick"
+                                AutomationProperties.AutomationId="BrowseArticleButton"
                                 l:Trans.Content="publish.browse" />
                             <Button Click="OnClearClick" l:Trans.Content="common.clear" />
                         </StackPanel>
                     </Grid>
                 </Border>
-
-                <TextBlock
-                    x:Name="QueueText"
-                    Visibility="Collapsed"
-                    Style="{StaticResource CaptionTextBlockStyle}"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
 
                 <!-- 文章信息 -->
                 <Border Style="{StaticResource CardBorderStyle}">
@@ -210,17 +286,123 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 资源处理说明 -->
+                <!-- 资源文件处理 -->
                 <Border Style="{StaticResource CardBorderStyle}">
-                    <StackPanel Spacing="6">
+                    <StackPanel Spacing="8">
                         <TextBlock
                             Style="{StaticResource BodyStrongTextBlockStyle}"
-                            l:Trans.Text="publish.assets" />
+                            l:Trans.Text="publish.assetsTitle" />
                         <TextBlock
-                            x:Name="AssetsInfoText"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            TextWrapping="Wrap" />
+                            TextWrapping="Wrap"
+                            l:Trans.Text="publish.assetsHint" />
+
+                        <TextBlock
+                            x:Name="AssetsEmptyText"
+                            Visibility="Collapsed"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            l:Trans.Text="publish.assetsNone" />
+
+                        <ItemsControl x:Name="AssetGroupsList" ItemsSource="{x:Bind AssetGroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="m:AssetGroupVm">
+                                    <StackPanel Spacing="2" Margin="0,4,0,4">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox
+                                                MinWidth="0"
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.AutomationId="{x:Bind AutomationId}"
+                                                IsChecked="{x:Bind IsChecked, Mode=TwoWay}"
+                                                Checked="OnAssetGroupCheck"
+                                                Unchecked="OnAssetGroupCheck" />
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                Text="{x:Bind Title}"
+                                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                                VerticalAlignment="Center" />
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                Text="{x:Bind CountText}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                VerticalAlignment="Center" />
+                                            <TextBlock
+                                                Grid.Column="3"
+                                                Text="{x:Bind RememberText}"
+                                                Visibility="{x:Bind RememberVisibility}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                VerticalAlignment="Center" />
+                                            <Button
+                                                Grid.Column="4"
+                                                Padding="8,2"
+                                                FontSize="12"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Click="OnAssetGroupToggle"
+                                                Content="{x:Bind ToggleText, Mode=OneWay}" />
+                                        </Grid>
+
+                                        <StackPanel
+                                            Margin="28,0,0,0"
+                                            Spacing="2"
+                                            Visibility="{x:Bind ItemsVisibility, Mode=OneWay}">
+                                            <ItemsControl ItemsSource="{x:Bind Items}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="m:AssetItemVm">
+                                                        <Grid ColumnSpacing="8">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <CheckBox
+                                                                MinWidth="0"
+                                                                VerticalAlignment="Center"
+                                                                AutomationProperties.AutomationId="{x:Bind AutomationId}"
+                                                                IsChecked="{x:Bind IsChecked, Mode=TwoWay}" />
+                                                            <TextBlock
+                                                                Grid.Column="1"
+                                                                Text="{x:Bind DisplayName}"
+                                                                VerticalAlignment="Center"
+                                                                TextTrimming="CharacterEllipsis"
+                                                                ToolTipService.ToolTip="{x:Bind LocalPath, Mode=OneWay}" />
+                                                            <TextBlock
+                                                                Grid.Column="2"
+                                                                Text="{x:Bind ResolvedText}"
+                                                                Visibility="{x:Bind ResolvedVisibility, Mode=OneWay}"
+                                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                                VerticalAlignment="Center"
+                                                                TextTrimming="CharacterEllipsis"
+                                                                MaxWidth="260" />
+                                                            <Button
+                                                                Grid.Column="3"
+                                                                Padding="8,2"
+                                                                FontSize="12"
+                                                                Visibility="{x:Bind BrowseVisibility}"
+                                                                AutomationProperties.AutomationId="{x:Bind BrowseAutomationId}"
+                                                                Click="OnAssetBrowseClick"
+                                                                Content="{x:Bind BrowseText}" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Border>
 
@@ -230,20 +412,30 @@
                         x:Name="PublishButton"
                         Style="{StaticResource AccentButtonStyle}"
                         MinWidth="150"
+                        HorizontalContentAlignment="Center"
                         AutomationProperties.AutomationId="PublishButton"
                         Click="OnPublishClick">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <ProgressRing x:Name="BusyRing" IsActive="False" Width="16" Height="16" />
-                            <TextBlock l:Trans.Text="publish.button" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                            <ProgressRing
+                                x:Name="BusyRing"
+                                IsActive="False"
+                                Visibility="Collapsed"
+                                Width="16"
+                                Height="16" />
+                            <TextBlock VerticalAlignment="Center" l:Trans.Text="publish.button" />
                         </StackPanel>
                     </Button>
                     <TextBlock
                         VerticalAlignment="Center"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap"
+                        MaxWidth="420"
                         l:Trans.Text="publish.editHint" />
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
     </Grid>
 </Page>
+
+

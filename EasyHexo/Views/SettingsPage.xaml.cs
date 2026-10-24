@@ -6,10 +6,11 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace EasyHexo.Views;
 
-/// <summary>设置页：语言、Hexo 根目录切换、关于信息。</summary>
+/// <summary>设置页：语言、外观主题、Hexo 根目录切换、关于信息。</summary>
 public sealed partial class SettingsPage : Page
 {
     private bool _suppressLanguageChange;
+    private bool _suppressThemeChange;
 
     public SettingsPage()
     {
@@ -31,10 +32,38 @@ public sealed partial class SettingsPage : Page
             _suppressLanguageChange = false;
         }
 
+        _suppressThemeChange = true;
+        try
+        {
+            ThemeCombo.SelectedIndex = AppState.Current.Theme switch
+            {
+                ThemeService.Light => 1,
+                ThemeService.Dark => 2,
+                _ => 0,
+            };
+        }
+        finally
+        {
+            _suppressThemeChange = false;
+        }
+
         RootPathText.Text = AppState.Current.Project?.RootPath ?? Lang.T("root.none");
 
         var version = typeof(App).Assembly.GetName().Version;
         VersionText.Text = Lang.T("settings.version", version is null ? "1.0" : version.ToString(3));
+    }
+
+    private void OnThemeSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressThemeChange ||
+            ThemeCombo.SelectedItem is not ComboBoxItem item ||
+            item.Tag is not string theme)
+        {
+            return;
+        }
+
+        AppState.Current.SetTheme(theme);
+        ShowMessage(InfoBarSeverity.Success, Lang.T("settings.themeChanged"));
     }
 
     private void OnLanguageSelectionChanged(object sender, SelectionChangedEventArgs e)

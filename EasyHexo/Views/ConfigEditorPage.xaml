@@ -6,22 +6,23 @@
     xmlns:l="using:EasyHexo.Localization"
     xmlns:m="using:EasyHexo.Models">
 
-    <Grid Margin="24,16,24,16">
+    <Grid Margin="20,14,20,14">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- 标题 + 操作按钮（“应用到配置”在总项上方） -->
-        <Grid Grid.Row="0" Margin="0,0,0,12">
+        <!-- 标题 + 操作栏（撤回 / 展开收起 / 重载 / 应用到配置） -->
+        <Grid Grid.Row="0" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel Spacing="2" Margin="0,0,16,0">
+            <StackPanel Spacing="2" Margin="0,0,12,0">
                 <TextBlock
                     Style="{StaticResource TitleTextBlockStyle}"
                     l:Trans.Text="config.title" />
@@ -35,8 +36,19 @@
             <StackPanel
                 Grid.Column="1"
                 Orientation="Horizontal"
-                Spacing="8"
+                Spacing="6"
                 VerticalAlignment="Center">
+                <Button
+                    x:Name="UndoButton"
+                    Click="OnUndoClick"
+                    IsEnabled="False"
+                    AutomationProperties.AutomationId="UndoButton"
+                    l:Trans.ToolTip="common.undo">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE7A7;" FontSize="12" />
+                        <TextBlock l:Trans.Text="common.undo" />
+                    </StackPanel>
+                </Button>
                 <Button Click="OnExpandAllClick" l:Trans.Content="common.expandAll" />
                 <Button Click="OnCollapseAllClick" l:Trans.Content="common.collapseAll" />
                 <Button Click="OnReloadClick" l:Trans.Content="common.reload" />
@@ -50,17 +62,132 @@
             </StackPanel>
         </Grid>
 
+        <!-- 主题 + 站点图标 -->
+        <Grid Grid.Row="1" Margin="0,0,0,10" ColumnSpacing="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Style="{StaticResource CardBorderStyle}" Padding="12">
+                <StackPanel Spacing="8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            l:Trans.Text="config.theme.title" />
+                        <TextBlock
+                            x:Name="ThemeHintText"
+                            Grid.Column="1"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap" />
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <ComboBox
+                            x:Name="ThemeCombo"
+                            MinWidth="150"
+                            HorizontalAlignment="Left"
+                            AutomationProperties.AutomationId="ThemeCombo"
+                            SelectionChanged="OnThemeComboChanged" />
+                        <Button
+                            x:Name="SwitchThemeButton"
+                            AutomationProperties.AutomationId="SwitchThemeButton"
+                            Click="OnSwitchThemeClick"
+                            l:Trans.Content="config.theme.switch" />
+                        <Button
+                            x:Name="EditThemeConfigButton"
+                            AutomationProperties.AutomationId="EditThemeConfigButton"
+                            Click="OnEditThemeConfigClick"
+                            l:Trans.Content="config.theme.edit" />
+                        <Button
+                            x:Name="BackToSiteButton"
+                            AutomationProperties.AutomationId="BackToSiteButton"
+                            Visibility="Collapsed"
+                            Click="OnBackToSiteClick"
+                            l:Trans.Content="config.theme.back" />
+                    </StackPanel>
+
+                    <TextBlock
+                        x:Name="ThemeModeText"
+                        Visibility="Collapsed"
+                        TextWrapping="Wrap"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="12">
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Width="44"
+                        Height="44"
+                        CornerRadius="8"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1">
+                        <Grid>
+                            <FontIcon
+                                x:Name="FaviconPlaceholder"
+                                Glyph="&#xEB9F;"
+                                FontSize="18"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <Image
+                                x:Name="FaviconImage"
+                                Visibility="Collapsed"
+                                Stretch="Uniform" />
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            l:Trans.Text="config.favicon.title" />
+                        <TextBlock
+                            x:Name="FaviconValueText"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap"
+                            IsTextSelectionEnabled="True" />
+                    </StackPanel>
+
+                    <Button
+                        Grid.Column="2"
+                        x:Name="ChangeFaviconButton"
+                        AutomationProperties.AutomationId="ChangeFaviconButton"
+                        VerticalAlignment="Center"
+                        Click="OnChangeFaviconClick"
+                        l:Trans.Content="config.favicon.change" />
+                </Grid>
+            </Border>
+        </Grid>
+
         <InfoBar
             x:Name="StatusBar"
-            Grid.Row="1"
+            Grid.Row="2"
             IsOpen="False"
             IsClosable="True"
             Margin="0,0,0,8" />
 
         <!-- 配置列表 -->
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3">
             <ListView
                 x:Name="ConfigListView"
+                AutomationProperties.AutomationId="ConfigList"
                 ItemsSource="{x:Bind Rows}"
                 SelectionMode="None"
                 IsItemClickEnabled="False"
@@ -68,79 +195,190 @@
                 ScrollViewer.HorizontalScrollMode="Disabled">
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="m:ConfigRow">
-                        <StackPanel Margin="{x:Bind Indent}" Padding="0,3,0,3">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="28" />
-                                    <ColumnDefinition Width="230" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-
-                                <Button
-                                    Grid.Column="0"
-                                    Width="24"
-                                    Height="24"
-                                    Padding="0"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    CornerRadius="4"
-                                    VerticalAlignment="Center"
-                                    Visibility="{x:Bind ChevronVisibility}"
-                                    IsEnabled="{x:Bind CanExpand}"
-                                    Click="OnToggleExpandClick">
-                                    <FontIcon Glyph="{x:Bind ChevronGlyph}" FontSize="10" />
-                                </Button>
-
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="{x:Bind Key}"
-                                    FontWeight="SemiBold"
-                                    VerticalAlignment="Center"
-                                    TextTrimming="CharacterEllipsis"
-                                    ToolTipService.ToolTip="{x:Bind KeyToolTip}"
-                                    Margin="0,0,10,0" />
-
-                                <TextBox
-                                    Grid.Column="2"
-                                    Text="{x:Bind ValueText}"
-                                    Visibility="{x:Bind EditorVisibility}"
-                                    VerticalAlignment="Center"
-                                    MinHeight="32"
-                                    TextChanged="OnValueTextChanged" />
-
-                                <TextBlock
-                                    Grid.Column="2"
-                                    Text="{x:Bind ValueText}"
-                                    Visibility="{x:Bind StaticValueVisibility}"
-                                    VerticalAlignment="Center"
-                                    TextWrapping="Wrap"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-
-                                <Border
-                                    Grid.Column="3"
-                                    Margin="10,0,0,0"
-                                    Padding="6,1"
-                                    CornerRadius="4"
-                                    VerticalAlignment="Center"
-                                    Background="{ThemeResource ControlFillColorDefaultBrush}"
-                                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                                    BorderThickness="1">
+                        <Grid>
+                            <!-- 分区标题 -->
+                            <Border
+                                Visibility="{x:Bind SectionVisibility}"
+                                Margin="0,8,0,2"
+                                Padding="4,2"
+                                CornerRadius="6"
+                                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button
+                                        Width="24"
+                                        Height="24"
+                                        Padding="0"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Click="OnSectionToggleClick">
+                                        <FontIcon Glyph="{x:Bind SectionChevron}" FontSize="10" />
+                                    </Button>
                                     <TextBlock
-                                        Text="{x:Bind TypeText}"
+                                        Grid.Column="1"
+                                        Text="{x:Bind SectionTitle}"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        VerticalAlignment="Center" />
+                                    <TextBlock
+                                        Grid.Column="2"
+                                        Text="{x:Bind SectionCountText}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        VerticalAlignment="Center"
+                                        Margin="8,0,4,0" />
+                                </Grid>
+                            </Border>
+
+                            <!-- 配置项 -->
+                            <Border
+                                Visibility="{x:Bind ContentVisibility}"
+                                Background="{x:Bind RowBackground, Mode=OneWay}"
+                                BorderBrush="{x:Bind RowBorderBrush, Mode=OneWay}"
+                                BorderThickness="{x:Bind RowBorderThickness, Mode=OneWay}"
+                                CornerRadius="6"
+                                Padding="2,1">
+                                <StackPanel Margin="{x:Bind Indent}" Padding="0,1,0,1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="28" />
+                                            <ColumnDefinition Width="200" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Button
+                                            Grid.Column="0"
+                                            Width="24"
+                                            Height="24"
+                                            Padding="0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            CornerRadius="4"
+                                            VerticalAlignment="Center"
+                                            Visibility="{x:Bind ChevronVisibility}"
+                                            IsEnabled="{x:Bind CanExpand}"
+                                            Click="OnToggleExpandClick">
+                                            <FontIcon Glyph="{x:Bind ChevronGlyph}" FontSize="10" />
+                                        </Button>
+
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            Text="{x:Bind Key}"
+                                            FontWeight="SemiBold"
+                                            VerticalAlignment="Center"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTipService.ToolTip="{x:Bind KeyToolTip}"
+                                            Margin="0,0,10,0" />
+
+                                        <Grid Grid.Column="2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBox
+                                                Grid.Column="0"
+                                                AutomationProperties.AutomationId="{x:Bind EditorAutomationId}"
+                                                Text="{x:Bind ValueText}"
+                                                Visibility="{x:Bind TextVisibility}"
+                                                VerticalAlignment="Center"
+                                                MinHeight="32"
+                                                TextChanged="OnTextChanged"
+                                                GotFocus="OnEditorGotFocus"
+                                                LostFocus="OnTextLostFocus" />
+
+                                            <ComboBox
+                                                Grid.Column="0"
+                                                AutomationProperties.AutomationId="{x:Bind EditorAutomationId}"
+                                                Visibility="{x:Bind ComboVisibility}"
+                                                VerticalAlignment="Center"
+                                                MinHeight="32"
+                                                HorizontalAlignment="Stretch"
+                                                IsEditable="{x:Bind ComboEditable}"
+                                                ItemsSource="{x:Bind ComboItems}"
+                                                Text="{x:Bind ComboText}"
+                                                SelectionChanged="OnComboSelectionChanged"
+                                                GotFocus="OnComboGotFocus"
+                                                LostFocus="OnComboLostFocus" />
+
+                                            <ToggleSwitch
+                                                Grid.Column="0"
+                                                AutomationProperties.AutomationId="{x:Bind EditorAutomationId}"
+                                                Visibility="{x:Bind BoolVisibility}"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Left"
+                                                IsOn="{x:Bind BoolValue}"
+                                                Toggled="OnBoolToggled" />
+
+                                            <NumberBox
+                                                Grid.Column="0"
+                                                AutomationProperties.AutomationId="{x:Bind EditorAutomationId}"
+                                                Visibility="{x:Bind NumberVisibility}"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Left"
+                                                MinWidth="140"
+                                                Value="{x:Bind NumberValue}"
+                                                SpinButtonPlacementMode="Compact"
+                                                ValueChanged="OnNumberValueChanged" />
+
+                                            <TextBlock
+                                                Grid.Column="0"
+                                                Text="{x:Bind ValueText}"
+                                                Visibility="{x:Bind StaticValueVisibility}"
+                                                VerticalAlignment="Center"
+                                                TextWrapping="Wrap"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                                            <Button
+                                                Grid.Column="1"
+                                                Margin="8,0,0,0"
+                                                Padding="10,4"
+                                                VerticalAlignment="Center"
+                                                Visibility="{x:Bind DirButtonVisibility}"
+                                                Click="OnBrowseDirClick"
+                                                l:Trans.Content="common.browse" />
+                                        </Grid>
+
+                                        <StackPanel
+                                            Grid.Column="3"
+                                            Orientation="Horizontal"
+                                            Spacing="6"
+                                            VerticalAlignment="Center"
+                                            Margin="8,0,0,0">
+                                            <TextBlock
+                                                Text="●"
+                                                FontSize="12"
+                                                Foreground="#F59E0B"
+                                                VerticalAlignment="Center"
+                                                Visibility="{x:Bind DirtyDotVisibility, Mode=OneWay}" />
+                                            <Border
+                                                Padding="6,1"
+                                                CornerRadius="4"
+                                                Background="{ThemeResource ControlFillColorDefaultBrush}"
+                                                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                                BorderThickness="1">
+                                                <TextBlock
+                                                    Text="{x:Bind TypeText}"
+                                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <TextBlock
+                                        Text="{x:Bind Comment}"
+                                        Visibility="{x:Bind CommentVisibility}"
+                                        Margin="28,2,0,2"
+                                        TextWrapping="Wrap"
                                         Style="{StaticResource CaptionTextBlockStyle}"
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </Border>
-                            </Grid>
-
-                            <TextBlock
-                                Text="{x:Bind Comment}"
-                                Visibility="{x:Bind CommentVisibility}"
-                                Margin="28,2,0,2"
-                                TextWrapping="Wrap"
-                                Style="{StaticResource CaptionTextBlockStyle}"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
@@ -174,9 +412,13 @@
 
         <TextBlock
             x:Name="StatsText"
-            Grid.Row="3"
+            Grid.Row="4"
             Margin="0,8,0,0"
             Style="{StaticResource CaptionTextBlockStyle}"
             Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
     </Grid>
 </Page>
+
+
+
+

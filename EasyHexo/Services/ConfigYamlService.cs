@@ -411,6 +411,46 @@ public static class ConfigYamlService
         return new ApplyResult { AppliedCount = applied, BackupPath = backupPath };
     }
 
+    /// <summary>
+    /// 在配置文件末尾追加一个顶层键（用于配置里原本没有的项，例如 favicon）。
+    /// 只追加一行、不重排已有内容；写完后重新解析即可在列表中看到该项。
+    /// </summary>
+    public static void AppendTopLevelKey(string configPath, string key, string value)
+    {
+        var text = TextFileService.ReadAllText(configPath);
+        var hadBom = TextFileService.HasUtf8Bom(configPath);
+        var newLine = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var normalized = text.Replace("\r\n", "\n").Replace('\r', '\n');
+
+        if (normalized.Length > 0 && !normalized.EndsWith('\n'))
+        {
+            normalized += '\n';
+        }
+
+        normalized += $"{key}: {FormatAppendedValue(value)}\n";
+        var output = newLine == "\r\n" ? normalized.Replace("\n", "\r\n") : normalized;
+        TextFileService.WriteAllText(configPath, output, hadBom);
+    }
+
+    /// <summary>追加新键时使用的简单标量格式化（尽量少加引号，必要时用单引号）。</summary>
+    public static string FormatAppendedValue(string? value)
+    {
+        value ??= string.Empty;
+        if (value.Length == 0)
+        {
+            return "''";
+        }
+
+        var needQuote = value[0] is '-' or '?' or ':' or ',' or '[' or ']' or '{' or '}' or '#' or '&' or '*'
+            or '!' or '|' or '>' or '\'' or '"' or '%' or '@' or '`'
+            || char.IsWhiteSpace(value[0])
+            || char.IsWhiteSpace(value[^1])
+            || value.Contains(": ", StringComparison.Ordinal)
+            || value.Contains(" #", StringComparison.Ordinal);
+
+        return needQuote ? "'" + value.Replace("'", "''") + "'" : value;
+    }
+
     /// <summary>把 ConfigEntry 树压平成列表，便于统计脏项数量。</summary>
     public static List<ConfigEntry> Flatten(IEnumerable<ConfigEntry> roots)
     {

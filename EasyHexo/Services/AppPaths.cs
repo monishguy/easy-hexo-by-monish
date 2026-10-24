@@ -55,6 +55,15 @@ public sealed class AppSettings
 
     /// <summary>界面语言："zh-CN" 或 "en-US"。</summary>
     public string Language { get; set; } = Localization.Lang.ZhCn;
+
+    /// <summary>外观主题："system" / "light" / "dark"。</summary>
+    public string Theme { get; set; } = ThemeService.System;
+
+    /// <summary>发布文章时“图片”资源组默认是否勾选（记住设置）。</summary>
+    public bool AssetImagesEnabled { get; set; } = true;
+
+    /// <summary>发布文章时“文件”资源组默认是否勾选（记住设置）。</summary>
+    public bool AssetFilesEnabled { get; set; } = true;
 }
 
 public static class SettingsService
@@ -75,7 +84,9 @@ public static class SettingsService
             }
 
             var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            settings.Theme = ThemeService.Normalize(settings.Theme);
+            return settings;
         }
         catch (Exception ex)
         {

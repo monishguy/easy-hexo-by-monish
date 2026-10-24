@@ -1,15 +1,16 @@
 # Hexo 配置易（Easy Hexo）
 
-面向 **Windows 10 / 11** 的 WinUI 3 桌面应用，用来可视化维护 Hexo 站点的 `_config.yml`，并以表单方式发布 / 重发 Markdown 文章、自动整理文章里的本机图片与附件。
+面向 **Windows 10 / 11** 的 WinUI 3 桌面应用：分区化、可视化地维护 Hexo 站点的 `_config.yml` 与主题配置，一键切换主题、更换站点图标，并以表单方式发布 / 重发 Markdown 文章、按需整理文章里的本机图片与附件。
 
 > 仓库地址：<https://github.com/monishguy/easy-hexo-by-monish>
 > 许可证：MIT（见仓库根目录 [LICENSE](LICENSE)）　|　技术栈：**C# + WinUI 3（Windows App SDK 1.7）+ .NET 8**
+> 当前版本：**1.1.0**
 
 ![配置编辑](docs/screenshots/config-editor.png)
 
-| 发布文章 | 设置 |
+| 发布文章 | 设置（浅色主题） |
 | --- | --- |
-| ![发布文章](docs/screenshots/publish.png) | ![设置](docs/screenshots/settings.png) |
+| ![发布文章](docs/screenshots/publish.png) | ![设置](docs/screenshots/settings-light.png) |
 
 ---
 
@@ -30,7 +31,7 @@
 ## 2. 前置条件与环境
 
 ### 运行环境
-- Windows 10 1809（17763）及以上，或 Windows 11（推荐 Win11，可获得完整的 Fluent 风格与 Mica 相关能力）
+- Windows 10 1809（17763）及以上，或 Windows 11（推荐 Win11）
 - 无需安装 Node.js / Hexo —— 本工具只读写 Hexo 目录里的文件，不执行 `hexo` 命令
 
 ### 开发环境（编译必需）
@@ -83,18 +84,18 @@ pwsh tools\build-unpackaged.ps1 -FrameworkDependent     # 不打包 .NET 运行�
 默认把 **.NET 8 运行时 + Windows App SDK 运行时** 一起打进包里，解压即可运行；`releases\` 已在 `.gitignore` 中，不会进入版本库。
 
 ### 本仓库的验证情况
-编写过程中在没有安装 Visual Studio 的环境里做了两轮验证：
+在没有安装 Visual Studio 的环境里用 .NET SDK + 手工合并 `resources.pri` 做了编译与真实运行验证，**1.1.0 版本跑了 40+ 项 UI 自动化回归**，包括：
 
-1. **编译验证**：用 .NET SDK 编译，XAML（`.xbf`）与 C# 全部通过，0 error（仅最后打包步骤因缺少 VS 的 Appx 任务而中止，与代码无关）。
-2. **运行验证**：手工合并 `resources.pri` 后真实启动并通过 UI Automation 跑通端到端流程：
-   - 配置编辑 → 修改 `title` → 应用到配置：**只有该行变化**，生成 `_config.yml.easyhexo.bak`；
-   - 修改带行尾注释的项：`trailing_index: false # 注释` 注释保留；
-   - 修改含 `:` 和 `#` 的值：自动写为 `'含冒号: 与井号 # 的值'`；
-   - 清空带引号的值：写回 `timezone: ''`（引号风格保留）；
-   - 发布已发布文章：本地图片复制到 `source\你好 Hexo\photo.png`，链接改写为 `/你好%20Hexo/photo.png`，`date`/`tags`/`categories` 保留；
-   - 发布没有 front-matter 的 `.md`：自动在文件开头补 front matter，日期取文件修改时间，附件复制到 `source\no-front-matter\doc.zip`，网页链接原样跳过；
-   - 中英文切换立即生效，窗口尺寸 / 自绘标题栏正常；
-   - 简体中文键名翻译：配置列表显示「站点标题 / 去掉链接中的 index.html」等中文名，灰色小字显示原英文键名；应用到配置后文件里仍是 `title: …`、`pretty_urls:`、`trailing_index:` 等英文键。
+- 文本改值 → 撤回 → 值恢复；改值 → 应用到配置：**只改动对应行**、生成 `_config.yml.easyhexo.bak`；
+- 布尔项用开关修改后写回 `trailing_index: false`；下拉项（语言 / 时区 / 永久链接等）正常显示与写回；
+- 目录项有“浏览”按钮，数字项（`per_page`）使用 NumberBox；
+- 一键切换主题写入 `theme: minimal`；编辑 `themes/landscape/_config.yml` 并应用成功；
+- 更换站点图标：图片复制到 `source\newfavicon.png`，配置写为 `favicon: /newfavicon.png`；
+- 发布文章：取消勾选的图片保持原链接且不复制、勾选的附件复制并改写为 `/你好%20Hexo/doc.zip`；
+- 拖入/浏览导入 `.md` 后出现在“待发布”列表；修改标题后切到别的文章再切回，草稿内容正确恢复；
+- 窗口最小尺寸生效（1040×680），侧栏收起时隐藏根目录、展开后显示；
+- 浅色 / 深色 / 跟随系统三种主题即时生效；
+- 中英文切换、简体中文键名翻译、窗口缩放布局均正常。
 
 未在本机执行：VS 一键 `F5` 与 MSIX 打包（环境无 VS），但工程结构、包版本、构建配置均为官方标准模板写法。
 
@@ -106,62 +107,86 @@ EasyHexo/
   EasyHexo.csproj             # net8.0-windows10.0.19041.0 / WinUI 3 / unpackaged
   app.manifest                # PerMonitorV2 DPI、长路径、Win10/11 兼容声明
   App.xaml(.cs)               # 应用入口：读设置、套用语言、创建主窗口
-  MainWindow.xaml(.cs)        # NavigationView 三栏 + 自绘标题栏
+  MainWindow.xaml(.cs)        # NavigationView 三栏 + 自绘标题栏 + 最小尺寸 + 主题应用
   Views/
-    ConfigEditorPage.xaml(.cs)   # 配置编辑
-    PublishPage.xaml(.cs)        # 发布文章
-    SettingsPage.xaml(.cs)       # 设置
+    ConfigEditorPage.xaml(.cs)   # 配置编辑（分区 / 可视化编辑器 / 撤销 / 主题 / 图标）
+    PublishPage.xaml(.cs)        # 发布文章（待发布草稿 / 已发布文章 / 资源分组）
+    SettingsPage.xaml(.cs)       # 设置（语言 / 主题 / 根目录 / 关于）
   Models/
-    ConfigEntry 相关          -> Services/ConfigYamlService.cs
-    ConfigRow.cs               # 配置列表行的 ViewModel
-    ArticleInfo.cs             # 已发布文章
-    FrontMatter.cs             # front-matter 数据
-    TagItem.cs                 # 标签块
+    ConfigRow.cs               # 配置列表行 ViewModel（分区标题 / 分组 / 各类型编辑器）
+    EditorDraft.cs             # 导入的待发布文章 + 草稿状态
+    AssetViews.cs              # 资源分组的 ViewModel（图片 / 文件 / 未识别项）
+    ArticleInfo.cs / FrontMatter.cs / TagItem.cs
   Services/
     AppPaths.cs                # 设置/日志路径 + AppSettings + SettingsService + AppLog
-    AppState.cs                # 全局状态（根目录、语言、设置持久化）
+    AppState.cs                # 全局状态（根目录 / 语言 / 主题 / 资源分组记忆）
+    ThemeService.cs            # 黑 / 浅 / 跟随系统
     HexoProject.cs             # 根目录校验、路径/文件名工具
-    ConfigYamlService.cs       # ★ _config.yml 行级解析 + 只改改动行的写回
-    FrontMatterService.cs      # ★ front-matter 识别 / 解析 / 生成
+    ConfigYamlService.cs       # ★ _config.yml 行级解析 + 只改改动行的写回 + 追加顶层键
+    ConfigEditorMetadata.cs    # ★ 哪些配置项用开关 / 下拉 / 数字 / 目录选择
+    ConfigLayoutService.cs     # ★ 站点配置的常用度分区与排序
+    HexoThemeService.cs        # ★ /themes/ 主题识别与当前主题读取
+    FaviconService.cs          # ★ 站点图标识别 / 复制 / 相对路径改写
+    FrontMatterService.cs      # front-matter 识别 / 解析 / 生成
     ArticleService.cs          # 扫描 source/_posts（按修改时间倒序）
-    AssetService.cs            # ★ 本机绝对路径图片/附件复制与链接改写
+    AssetService.cs            # ★ 资源扫描（图片/文件/未识别）+ 按选择复制改写
     ArticlePublisher.cs        # ★ 发布流程：资源处理 → front-matter → 写 _posts
-    TempFileService.cs         # .txt → 临时目录 .md
-    TextFileService.cs         # 保留 BOM / 换行的文本读写
+    TempFileService.cs / TextFileService.cs
   Localization/                # 运行时中英文（无需重启，立即切换）
     Lang.cs / StringsZhCn.cs / StringsEnUs.cs / Trans.cs
     ConfigKeyTranslator.cs     # 配置项英文键名 → 中文显示名（仅显示，不改文件）
-  Helpers/WindowHelper.cs      # HWND、文件夹/文件选择器、对话框、打开目录
+  Helpers/WindowHelper.cs      # HWND、文件夹/文件/图片选择器、对话框、打开目录
+tools/build-unpackaged.ps1     # 无 VS 环境构建可运行 zip
 docs/screenshots/              # README 截图
 ```
 
 ## 5. 功能与实现对照
 
+### 5.1 窗口与外观
 | 需求 | 实现 |
 | --- | --- |
-| 选择 Hexo 根目录，校验 `_config.yml` + `source` | `HexoProject.TryCreate` + 首启/空状态/设置页三处入口 |
-| 依据缩进把 `_config.yml` 转为多层可展开列表 | `ConfigYamlService.Parse` → `ConfigRow` + `ListView`（展开/收起重建可见行） |
-| 简体中文下把固定配置项英文键名翻译成中文（仅界面显示） | `Localization/ConfigKeyTranslator.cs`：按“完整键路径”匹配，中文名为主标签、英文原名作为灰色提示；**写回文件时始终用英文键名** |
-| 可编辑项带输入框、自动填入原值 | DataTemplate 中 `TextBox`，`EditingValue` 保存在 `ConfigEntry` |
-| 注释转换为不可改的描述 | 上方整行注释 + 行尾注释都进入 `ConfigEntry.Comment`，只读显示 |
-| 顶部“应用到配置”写回文件 | `ConfigYamlService.Apply`：只重建被修改的行，写前备份 |
-| 定位 `source/_posts`，按修改日期新→旧 | `ArticleService.LoadPosts`（`OrderByDescending(Modified)`） |
-| 浏览 / 拖入一个或多个 `.md` `.txt` | `AllowDrop` + `FileOpenPicker`；多文件进入 `Queue` 逐篇发布 |
-| `.txt` 复制到临时目录并改后缀 `.md` | `TempFileService.ImportAsMarkdownAsync` |
-| 识别开头 `---` … `---` 中的 title/date/tags | `FrontMatterService.Parse`（支持行内数组与块序列占位） |
-| 标题/日期必填、日期用日期选择器 | `DatePicker` + `TimePicker`，写回固定 `yyyy-MM-dd HH:mm:ss` |
-| 标签输入后 Enter 锁定，可多个 | `TagInput.KeyDown` → `ObservableCollection<TagItem>` 标签块 |
-| 无 front-matter 时先填值、发布时写入文件开头 | `FrontMatterService.Compose` 生成后写回 |
-| 本地绝对路径图片/附件复制到 `source\标题` 并改写链接 | `AssetService.Process`（`http(s)`、相对路径跳过） |
-| 已发布文章可重新编辑发布 | 左侧列表选择 → 载入表单 → 写回原路径 |
-| 设置：语言 / 关于 / 根目录切换 | `SettingsPage` + `AppState` + `%LOCALAPPDATA%\EasyHexo\settings.json` |
+| 最小缩放尺寸、缩放不错乱 | `MainWindow` 通过 `OverlappedPresenter.PreferredMinimumWidth/Height` 限制 1040×680；列表列宽、日期选择器等按星号列自适应 |
+| 侧栏“当前 Hexo 根目录”只在侧栏展开或窗口较宽时显示 | `NavigationView.PaneDisplayMode=Auto` + 展开阈值 1260 / 紧凑阈值 800；`PaneOpened/PaneClosed/DisplayModeChanged` 时切换 `PaneFooter` 可见性 |
+| 黑 / 亮 / 跟随系统主题 | `AppState.Theme` + `ThemeService`，`MainWindow` 对根 Grid 设置 `RequestedTheme`；设置页切换立即生效并写入 `settings.json` |
+
+### 5.2 配置编辑
+| 需求 | 实现 |
+| --- | --- |
+| 依据缩进转多层可展开列表 | `ConfigYamlService.Parse` → `ConfigRow` + `ListView`（展开/收起重建可见行） |
+| 常用度分层排序、更现代的分区排版 | `ConfigLayoutService`：站点信息 → 网址与链接 → 目录 → 写作 → 代码高亮 → 首页分页 → 分类标签 → 元信息与时间格式 → 主题与扩展 → 部署 → 其它；分区标题行可整段收起 |
+| 布尔 / 选项 / 数字 / 目录可视化编辑 | `ConfigEditorMetadata` 按“完整键路径”映射：开关写 true/false；下拉（语言、时区、日期/时间格式、永久链接、语法高亮器、布局、更新时间方式、排序方式、部署类型、主题）；NumberBox（`per_page` 等）；目录项文本 + “浏览”选择文件夹并转成相对路径 |
+| 改动项高亮 | `ConfigRow.RefreshDirtyState()`，行背景/边框变琥珀色并显示 ● |
+| 撤回上一步 | 顶部“撤回上一步”：文本框按一次编辑（获得焦点时记快照、失焦或点撤回时回退）算一步；开关 / 下拉 / 数字每次改动算一步；应用配置后清空 |
+| 注释转只读描述 | 上方整行注释 + 行尾注释进入 `ConfigEntry.Comment` |
+| 简体中文键名翻译（仅显示） | `ConfigKeyTranslator`：中文为主标签、英文原名为灰色提示；写回始终用英文键 |
+| 顶部“应用到配置”只改改动行 | `ConfigYamlService.Apply`，写前备份 `*.easyhexo.bak` |
+| 识别 `/themes/`、一键切换主题 | `HexoThemeService.Detect` 扫描主题文件夹；选择后“一键切换”把 `theme:` 写入站点配置（保留其它未应用修改） |
+| 主题配置项可在软件内编辑 | “编辑主题配置”载入 `themes/<主题>/_config.yml`，按文件缩进展开、**不翻译键名**，可修改并应用（写前备份） |
+| 自动识别站点图标、浏览更换、复制并改相对路径 | `FaviconService`：解析 `favicon`（`/x.png`、相对路径、本机绝对路径）；更换时复制到 `source\` 并把配置改写为 `/文件名`；配置没有 favicon 时在文件末尾追加该项 |
+
+### 5.3 发布文章
+| 需求 | 实现 |
+| --- | --- |
+| 发布按钮文字居中 | 按钮内容用居中 StackPanel，进度环仅在发布时显示，空闲时文字严格居中 |
+| 定位 `source/_posts`，按修改日期新→旧 | `ArticleService.LoadPosts` |
+| 拖入多个文件时列出全部、最新导入在最前、可分别选中调整 | 左侧“待发布”列表：`Draft` 按导入顺序插到最上方（新批次在前）；选中即载入表单 |
+| 未发布的修改切换文章后存为草稿 | 切换前把标题/日期/标签写入该草稿（`IsModified` 标记“草稿 · 有未发布修改”），切回时自动恢复；已发布文章的修改也会在本次会话内保留 |
+| `.txt` 复制到临时目录改名 `.md` | `TempFileService.ImportAsMarkdownAsync` |
+| front-matter 表单化（标题/日期必填、日期选择器、Enter 锁定标签） | `FrontMatterService` + `DatePicker/TimePicker` + 标签块 |
+| 无 front-matter 时先填值、发布时写入开头 | `FrontMatterService.Compose` |
+| 资源文件处理：图片 / 文件 / 未识别项分组 | `AssetService.Scan` 按链接分类：存在的本机图片、存在的本机附件、找不到的本机文件（未识别项） |
+| 每组/每项复选框、默认勾选、记住设置、收起/展开 | `AssetGroupVm` / `AssetItemVm`；图片/文件的组勾选状态写入 `settings.json`（记住设置），未识别项默认不勾选且不记住 |
+| 未识别项“浏览”指定本机文件后自动替换并复制 | `OnAssetBrowseClick` 记录路径 → `AssetSelection.SourcePathOverride` → 发布时复制并改写链接 |
+| 取消勾选的资源保持原样 | `AssetSelection.Include=false`，链接与文件都不动 |
+| 已发布文章可重新编辑发布 | 左侧“已发布文章”选择 → 载入表单 → 写回原路径 |
 
 ## 6. `_config.yml` 写回规则
 
-> **键名显示与写回是分离的**：简体中文界面下，`title`、`pretty_urls.trailing_index` 等固定配置项会显示为「站点标题」「去掉链接中的 index.html」等中文名（英文原名以灰色小字 / 鼠标悬停提示展示）；写回文件时仍然使用**原始英文键名**，不会把中文键写入 `_config.yml`。未收录的键（自定义项、主题私有项）直接显示英文原名。
+> **键名显示与写回是分离的**：简体中文界面下，`title`、`pretty_urls.trailing_index` 等固定配置项会显示为「站点标题」「去掉链接中的 index.html」等中文名（英文原名以灰色小字 / 鼠标悬停提示展示）；写回文件时仍然使用**原始英文键名**，不会把中文键写入 `_config.yml`。主题配置不翻译键名。
 
 - **逐行处理**，不做完整 YAML 重新序列化，因此顺序、空行、注释、被注释掉的选项都原样保留；
 - 只重写被修改的那一行：`缩进 + key: ` + 新值 + 原行尾注释；
+- 值按控件语义写回：开关写 `true` / `false`，数字写数字，选项写字符串；
 - 值格式：
   - 原来是单/双引号 → 保留原引号类型（单引号内的 `'` 转义为 `''`）；
   - `true` / `false` / 数字 → 不加引号；
@@ -169,41 +194,44 @@ docs/screenshots/              # README 截图
   - 行内集合 `[a, b]` / `{a: b}` 原样写回；
   - 清空带引号的值 → 写回 `''`；
 - 多行块标量（`key: |` / `key: >`）无法安全单行替换 → 标记为**只读**；
-- 写文件前自动备份为 **`_config.yml.easyhexo.bak`**（每次应用时覆盖上一次备份）；
+- 写文件前自动备份为 **`*.easyhexo.bak`**（每次应用时覆盖上一次备份）；
 - 保留原文件的 UTF-8 BOM 状态与换行符（CRLF / LF）。
 
 ## 7. 发布规则
 
 1. 文章内容来自所选 `.md` 文件；`.txt` 会先复制到临时目录再改名成 `.md`；
 2. 正文里形如 `![alt](E:\images\a.png)`、`[text](D:\files\a.zip)` 的**本机绝对路径**：
-   - 复制到 `Hexo根目录\source\<标题>\`；
-   - 链接改写为 `/<标题>/<文件名>`（空格等特殊字符做 URL 转义）；
-   - `http(s)://`、`//`、相对路径、`/站点路径` 会被跳过；
+   - 在“资源文件处理”里按 图片 / 文件 / 未识别项 分组列出，勾选的项才会处理；
+   - 复制到 `Hexo根目录\source\<标题>\`，链接改写为 `/<标题>/<文件名>`（空格等特殊字符做 URL 转义）；
+   - 未勾选 / `http(s)://`、`//`、相对路径、站点内路径 → 原样保留；
    - 同名不同源文件自动加 `-2`、`-3` 后缀，避免互相覆盖；
+   - 未识别项若指定了本机文件，则按同样规则复制并改写；
 3. 生成 front-matter：`title` / `date` / `tags`，原文件里其它字段（如 `categories`、`updated`）原样保留；
 4. 写入 `Hexo根目录\source\_posts\<标题>.md`（标题中的 Windows 非法字符替换为 `_`）；
-5. 如果编辑的是**已发布文章**，写回原文件路径；如果编辑的是**外部 `.md` 文件**，还会把 front-matter 写回该文件开头（符合需求中“填入 md 文件开头首字处”）；
+5. 已发布文章写回原文件路径；外部 `.md` 文件还会把 front-matter 写回该文件开头；
 6. 目标已存在且不是同一文件时，会先弹窗确认覆盖；
-7. 多个文件会排队，每发布成功一篇自动载入下一篇。
+7. 发布成功后从“待发布”列表移除；若还有待发布文章，自动切到下一篇。
 
 ## 8. 本机数据位置
 
 | 内容 | 位置 |
 | --- | --- |
-| 设置（根目录、语言） | `%LOCALAPPDATA%\EasyHexo\settings.json` |
+| 设置（根目录、语言、主题、资源分组勾选记忆） | `%LOCALAPPDATA%\EasyHexo\settings.json` |
 | 错误日志 | `%LOCALAPPDATA%\EasyHexo\logs\easyhexo.log` |
 | 拖入 `.txt` 的临时 md | `%TEMP%\EasyHexo\<时间戳>\` |
-| `_config.yml` 备份 | `<Hexo 根目录>\_config.yml.easyhexo.bak` |
+| 配置文件备份 | `<配置所在目录>\*.easyhexo.bak` |
 
 ## 9. 已知限制 / 可扩展点
 
 - `_config.yml` 是“按缩进的行级解析”，不是完整 YAML 1.2 实现：锚点/别名、流式嵌套映射、复杂多行结构不支持（这些行会保持原样或只读）；键必须是 `key: value` 且冒号后带空格。
-- 目前只能**修改**已有配置项的值，不支持新增 / 删除配置项（Hexo 的配置项基本固定，够用；如需要可在 `ConfigYamlService` 上扩展）。
-- 中文键名翻译表覆盖 Hexo 默认 `_config.yml` 的固定项；用户自定义键、主题私有键没有译名时显示英文原名（不影响使用）。
+- 配置项只支持**修改**已有值；唯一例外是站点图标：若配置里没有 `favicon` 项，会在文件末尾追加一行。
+- 可视化控件覆盖 Hexo 固定项与 `true/false` 值；其它自定义键仍用文本框，避免猜错语义。
+- 可编辑下拉框不在列表里时可直接输入；输入内容在失焦或选择时提交。
+- 待发布文章的草稿保存在本次会话内（关闭程序后不保留），没有写入 Hexo 的 `source/_drafts`。
 - 文件中用作“分节标题”的注释（例如 `# Site`）会显示为紧随其后的第一个配置项的描述——这是忠实于文件顺序的展示方式。
 - front-matter 只映射 `title` / `date` / `tags`（`tags:` 的块序列写法也能识别），其它键原样保留；日期秒精度受界面时间选择器限制（没有单独秒输入时按 `00` 秒写入）。
 - 资源链接只处理 Markdown 的 `![alt](url)` / `[text](url)`；HTML 的 `<img src>` 不处理；路径中带右括号 `)` 的链接不解析。
-- 主题配置（`_config.landscape.yml` 等）、文章正文富文本编辑、单实例限制未实现，均可按现有服务层继续扩展。
+- 主题配置编辑按文件缩进展开，不提供分区排序与键名翻译；文章正文富文本编辑、单实例限制未实现。
 
 ## 10. 常见问题
 
@@ -214,4 +242,7 @@ A：确认是用 VS/MSBuild 生成的完整输出目录；本项目 `WindowsAppS
 A：这是 WinUI 3 的 PRI/打包任务只随 Visual Studio 提供的已知限制，请用 VS 或 “Developer PowerShell for VS” 里的 `msbuild`（见第 3 节）。
 
 **Q：拖入文件没反应？**
-A：本程序以普通权限运行；如果以管理员身份运行，Windows 会禁止从资源管理器拖放（系统限制），请用“浏览…”按钮。
+A：本程序以普通权限运行；如果以管理员身份运行，Windows 会禁止从资源管理器拖放（系统限制），请用“浏览”按钮。
+
+**Q：改错了配置怎么恢复？**
+A：每次“应用到配置”都会生成同目录的 `*.easyhexo.bak`；也可以先点“撤回上一步”。主题配置同样有备份。

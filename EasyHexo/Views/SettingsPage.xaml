@@ -44,6 +44,30 @@
                 </StackPanel>
             </Border>
 
+            <!-- 外观主题 -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <StackPanel Spacing="8">
+                    <TextBlock
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        l:Trans.Text="settings.theme" />
+                    <ComboBox
+                        x:Name="ThemeCombo"
+                        MinWidth="240"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.AutomationId="ThemeCombo"
+                        SelectionChanged="OnThemeSelectionChanged">
+                        <ComboBoxItem Tag="system" l:Trans.Content="settings.themeSystem" />
+                        <ComboBoxItem Tag="light" l:Trans.Content="settings.themeLight" />
+                        <ComboBoxItem Tag="dark" l:Trans.Content="settings.themeDark" />
+                    </ComboBox>
+                    <TextBlock
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap"
+                        l:Trans.Text="settings.themeHint" />
+                </StackPanel>
+            </Border>
+
             <!-- Hexo 根目录 -->
             <Border Style="{StaticResource CardBorderStyle}">
                 <StackPanel Spacing="8">

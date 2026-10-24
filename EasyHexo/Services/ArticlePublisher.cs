@@ -25,6 +25,9 @@ public sealed class PublishRequest
 
     /// <summary>原文件的 front-matter，用于保留 title/date/tags 之外的字段。</summary>
     public FrontMatter? OriginalFrontMatter { get; init; }
+
+    /// <summary>资源处理选择（URL → 是否包含 / 手动指定的本机文件）；null 表示全部包含。</summary>
+    public IReadOnlyDictionary<string, AssetSelection>? AssetSelections { get; init; }
 }
 
 public sealed class PublishResult
@@ -67,7 +70,7 @@ public static class ArticlePublisher
         var result = new PublishResult();
         Directory.CreateDirectory(project.PostsPath);
 
-        var assets = AssetService.Process(project.RootPath, request.Title, request.Body);
+        var assets = AssetService.Process(project.RootPath, request.Title, request.Body, request.AssetSelections);
         result.AssetsCopied = assets.Copied.Count;
         result.AssetFolder = assets.AssetFolder;
         result.Warnings.AddRange(assets.Warnings);

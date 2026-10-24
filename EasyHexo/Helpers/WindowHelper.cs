@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using EasyHexo.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -45,6 +46,36 @@ public static class WindowHelper
         WinRT.Interop.InitializeWithWindow.Initialize(picker, GetHwnd());
         return await picker.PickMultipleFilesAsync();
     }
+
+    private static readonly string[] ImageExtensions =
+    {
+        ".png", ".jpg", ".jpeg", ".ico", ".gif", ".webp", ".bmp", ".svg",
+    };
+
+    /// <summary>打开图片选择器（用于更换站点图标 / 未识别资源）。</summary>
+    public static async Task<string?> PickImageFileAsync(bool anyFile = false)
+    {
+        var picker = new Windows.Storage.Pickers.FileOpenPicker
+        {
+            SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary,
+        };
+
+        if (anyFile)
+        {
+            picker.FileTypeFilter.Add("*");
+        }
+        else
+        {
+            foreach (var extension in ImageExtensions)
+            {
+                picker.FileTypeFilter.Add(extension);
+            }
+        }
+
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, GetHwnd());
+        var file = await picker.PickSingleFileAsync();
+        return file?.Path;
+    }
 }
 
 /// <summary>对话框 / 外壳跳转。</summary>
@@ -61,6 +92,8 @@ public static class DialogHelper
         var dialog = new ContentDialog
         {
             XamlRoot = xamlRoot,
+            // 弹出层不在页面视觉树里，需要显式套用当前主题
+            RequestedTheme = ThemeService.ToElementTheme(AppState.Current.Theme),
             Title = title,
             Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap },
             PrimaryButtonText = primaryText,
@@ -85,7 +118,7 @@ public static class ShellHelper
         }
         catch (Exception ex)
         {
-            Services.AppLog.Write("打开目录失败", ex);
+            AppLog.Write("打开目录失败", ex);
         }
     }
 
@@ -97,7 +130,7 @@ public static class ShellHelper
         }
         catch (Exception ex)
         {
-            Services.AppLog.Write("打开链接失败", ex);
+            AppLog.Write("打开链接失败", ex);
         }
     }
 }
