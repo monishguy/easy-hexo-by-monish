@@ -17,6 +17,18 @@ public sealed class ArticleInfo
 
     public List<string> Tags { get; } = new();
 
+    /// <summary>分类名（_posts 下的一级文件夹）；空字符串表示未分类。</summary>
+    public string Category { get; set; } = string.Empty;
+
+    public string CategoryDisplay => string.IsNullOrEmpty(Category)
+        ? Localization.Lang.T("publish.categoryUncategorized")
+        : Category;
+
+    /// <summary>列表里是否勾选（用于批量调整分类）。</summary>
+    public bool IsChecked { get; set; }
+
+    public string CheckAutomationId => "post-check-" + RelativePath.Replace('\\', '/');
+
     public string ModifiedText => Modified.ToString("yyyy-MM-dd HH:mm");
 
     public string TagsText => string.Join(", ", Tags);

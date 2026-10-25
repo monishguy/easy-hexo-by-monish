@@ -110,6 +110,9 @@ public sealed class AppSettings
 
     /// <summary>发布文章时“文件”资源组默认是否勾选（记住设置）。</summary>
     public bool AssetFilesEnabled { get; set; } = true;
+
+    /// <summary>手动创建过的分类名（用于保留空分类）。</summary>
+    public List<string> Categories { get; set; } = new();
 }
 
 public static class SettingsService

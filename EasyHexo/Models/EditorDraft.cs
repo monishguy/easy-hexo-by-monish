@@ -43,6 +43,9 @@ public sealed class ImportDraft : INotifyPropertyChanged
 
     public DraftState State { get; } = new();
 
+    /// <summary>发布到的分类；空字符串表示“不进行分类”（直接放 _posts 下）。</summary>
+    public string Category { get; set; } = string.Empty;
+
     public string FileName => Path.GetFileName(SourcePath);
 
     public string DisplayTitle =>

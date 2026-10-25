@@ -20,6 +20,9 @@ public sealed class PublishRequest
 
     public List<string> Tags { get; init; } = new();
 
+    /// <summary>发布到的分类（_posts 下的一级文件夹名）；空字符串表示未分类。</summary>
+    public string Category { get; init; } = string.Empty;
+
     /// <summary>正文（不含 front-matter）。</summary>
     public string Body { get; init; } = string.Empty;
 
@@ -62,7 +65,7 @@ public static class ArticlePublisher
         }
 
         var fileName = PathHelper.SanitizeName(request.Title) + ".md";
-        return Path.Combine(project.PostsPath, fileName);
+        return CategoryService.GetTargetPath(project, request.Category, fileName, isFile: true);
     }
 
     public static PublishResult Publish(HexoProject project, PublishRequest request)
@@ -84,6 +87,12 @@ public static class ArticlePublisher
             request.OriginalFrontMatter);
 
         var targetPath = ResolveTargetPath(project, request);
+        var targetDirectory = Path.GetDirectoryName(targetPath);
+        if (!string.IsNullOrEmpty(targetDirectory))
+        {
+            Directory.CreateDirectory(targetDirectory);
+        }
+
         TextFileService.WriteAllText(targetPath, content);
         result.TargetPath = targetPath;
 

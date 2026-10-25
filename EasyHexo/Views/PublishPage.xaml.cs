@@ -26,7 +26,7 @@ public sealed partial class PublishPage : Page
 {
     private sealed class EditingTarget
     {
-        public string SourcePath { get; init; } = string.Empty;
+        public string SourcePath { get; set; } = string.Empty;
 
         public bool IsTemporary { get; init; }
 
@@ -37,14 +37,28 @@ public sealed partial class PublishPage : Page
         public string Body { get; init; } = string.Empty;
     }
 
+    private sealed class CategoryOption
+    {
+        public string Name { get; init; } = string.Empty;
+
+        public string Value { get; init; } = string.Empty;
+
+        public override string ToString() => Name;
+    }
+
     private readonly Dictionary<string, DraftState> _publishedDrafts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<ArticleInfo> _allPosts = new();
+    private readonly List<CategoryInfo> _categories = new();
     private EditingTarget? _editing;
     private ImportDraft? _currentDraft;
     private bool _suppressListSelection;
     private bool _suppressAssetEvents;
     private bool _suppressFormEvents;
+    private bool _suppressCategoryEvents;
     private bool _loadedOnce;
     private bool _busy;
+    private string _categoryFilter = "*";
+    private string _selectedArticleCategory = string.Empty;
 
     public PublishPage()
     {
@@ -84,6 +98,8 @@ public sealed partial class PublishPage : Page
     {
         var project = AppState.Current.Project;
         Posts.Clear();
+        _allPosts.Clear();
+        _categories.Clear();
 
         if (project is null)
         {
@@ -93,15 +109,20 @@ public sealed partial class PublishPage : Page
 
         try
         {
-            var posts = await Task.Run(() => ArticleService.LoadPosts(project));
-            foreach (var post in posts)
-            {
-                Posts.Add(post);
-            }
+            var (posts, categories) = await Task.Run(() => (
+                ArticleService.LoadPosts(project),
+                CategoryService.Scan(project)));
 
-            PostsCountText.Text = posts.Count == 0
-                ? Lang.T("publish.postsEmpty")
-                : Lang.T("publish.postCount", posts.Count);
+            _allPosts.AddRange(posts);
+            _categories.AddRange(categories);
+            BuildCategoryCombos();
+            ApplyPostFilter();
+            UpdateBatchCount();
+
+            if (_editing is not null)
+            {
+                SetArticleCategorySelection(_selectedArticleCategory, isDraft: _currentDraft is not null || !_editing.IsPublished);
+            }
         }
         catch (Exception ex)
         {
@@ -110,11 +131,83 @@ public sealed partial class PublishPage : Page
         }
     }
 
+    private void BuildCategoryCombos()
+    {
+        if (!_suppressCategoryEvents)
+        {
+            _suppressCategoryEvents = true;
+        }
+
+        try
+        {
+            var filterItems = new List<CategoryOption>
+            {
+                new() { Name = Lang.T("publish.categoryAll"), Value = "*" },
+                new() { Name = Lang.T("publish.categoryUncategorized"), Value = string.Empty },
+            };
+            filterItems.AddRange(_categories.Select(category => new CategoryOption
+            {
+                Name = category.Name,
+                Value = category.Name,
+            }));
+
+            CategoryFilterCombo.ItemsSource = filterItems;
+            var filterIndex = filterItems.FindIndex(option => option.Value == _categoryFilter);
+            CategoryFilterCombo.SelectedIndex = filterIndex >= 0 ? filterIndex : 0;
+
+            BatchCategoryCombo.ItemsSource = new List<CategoryOption>
+            {
+                new() { Name = Lang.T("publish.categoryUncategorized"), Value = string.Empty },
+            }.Concat(_categories.Select(category => new CategoryOption
+            {
+                Name = category.Name,
+                Value = category.Name,
+            })).ToList();
+        }
+        finally
+        {
+            _suppressCategoryEvents = false;
+        }
+    }
+
+    private void ApplyPostFilter()
+    {
+        Posts.Clear();
+        var filtered = _categoryFilter == "*"
+            ? _allPosts
+            : _allPosts.Where(post => string.Equals(post.Category, _categoryFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        foreach (var post in filtered)
+        {
+            Posts.Add(post);
+        }
+
+        PostsCountText.Text = filtered.Count == 0
+            ? Lang.T("publish.postsEmpty")
+            : Lang.T("publish.postCount", filtered.Count);
+    }
+
+    private void OnCategoryFilterChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressCategoryEvents || CategoryFilterCombo.SelectedItem is not CategoryOption option)
+        {
+            return;
+        }
+
+        _categoryFilter = option.Value;
+        ApplyPostFilter();
+    }
+
     private async void OnRefreshPostsClick(object sender, RoutedEventArgs e) => await LoadPostsAsync();
 
     private async void OnPostSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_suppressListSelection || _busy || e.AddedItems.Count == 0 || e.AddedItems[0] is not ArticleInfo info)
+        if (_suppressListSelection || _busy)
+        {
+            return;
+        }
+
+        if (e.AddedItems.Count == 0 || e.AddedItems[0] is not ArticleInfo info)
         {
             return;
         }
@@ -131,6 +224,300 @@ public sealed partial class PublishPage : Page
 
         SwitchToDraft(draft);
         await Task.CompletedTask;
+    }
+
+    // ── 分类管理 ─────────────────────────────────────────────────────
+
+    private void OnPostCheckChanged(object sender, RoutedEventArgs e)
+    {
+        UpdateBatchCount();
+    }
+
+    private void UpdateBatchCount()
+    {
+        var count = _allPosts.Count(post => post.IsChecked);
+        BatchCountText.Text = Lang.T("publish.categorySelected", count);
+    }
+
+    private async void OnBatchMoveClick(object sender, RoutedEventArgs e)
+    {
+        var project = AppState.Current.Project;
+        if (project is null)
+        {
+            return;
+        }
+
+        var selected = _allPosts.Where(post => post.IsChecked).ToList();
+        if (selected.Count == 0)
+        {
+            ShowMessage(InfoBarSeverity.Warning, Lang.T("publish.categorySelectPosts"));
+            return;
+        }
+
+        var target = BatchCategoryCombo.SelectedItem is CategoryOption option ? option.Value : string.Empty;
+        var moved = 0;
+        var failed = 0;
+
+        SetBusy(true);
+        try
+        {
+            await Task.Run(() =>
+            {
+                foreach (var post in selected)
+                {
+                    if (CategoryService.MoveArticle(project, post.FullPath, target, out var newPath, out _))
+                    {
+                        moved++;
+                        if (_publishedDrafts.TryGetValue(post.FullPath, out var state))
+                        {
+                            _publishedDrafts.Remove(post.FullPath);
+                            if (newPath is not null)
+                            {
+                                _publishedDrafts[newPath] = state;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        failed++;
+                    }
+                }
+            });
+
+            await LoadPostsAsync();
+
+            var detail = Lang.T("publish.categoryMovedMany", moved);
+            if (failed > 0)
+            {
+                detail += "  " + Lang.T("publish.categoryMoveFailedMany", failed);
+            }
+
+            ShowMessage(failed == 0 ? InfoBarSeverity.Success : InfoBarSeverity.Warning, detail);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("批量移动分类失败", ex);
+            ShowMessage(InfoBarSeverity.Error, Lang.T("category.moveFailed", ex.Message));
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private async void OnNewCategoryClick(object sender, RoutedEventArgs e)
+    {
+        var project = AppState.Current.Project;
+        if (project is null)
+        {
+            ShowMessage(InfoBarSeverity.Error, Lang.T("root.none"));
+            return;
+        }
+
+        var name = await PromptCategoryNameAsync();
+        if (name is null)
+        {
+            return;
+        }
+
+        if (!CategoryService.Create(project, name, out var errorKey))
+        {
+            ShowMessage(InfoBarSeverity.Error, Lang.T(errorKey ?? "category.createFailed", name));
+            return;
+        }
+
+        _categoryFilter = name.Trim();
+        await LoadPostsAsync();
+        ShowMessage(InfoBarSeverity.Success, Lang.T("publish.categoryCreated", name.Trim()));
+    }
+
+    private async void OnDeleteCategoryClick(object sender, RoutedEventArgs e)
+    {
+        var project = AppState.Current.Project;
+        if (project is null || CategoryFilterCombo.SelectedItem is not CategoryOption option)
+        {
+            return;
+        }
+
+        if (option.Value is "*" or "")
+        {
+            ShowMessage(InfoBarSeverity.Warning, Lang.T("publish.categoryPick"));
+            return;
+        }
+
+        var category = _categories.FirstOrDefault(item =>
+            string.Equals(item.Name, option.Value, StringComparison.OrdinalIgnoreCase));
+        if (category is null)
+        {
+            ShowMessage(InfoBarSeverity.Error, Lang.T("category.notFound"));
+            return;
+        }
+
+        if (!category.IsEmpty)
+        {
+            ShowMessage(InfoBarSeverity.Warning, Lang.T("category.notEmpty"));
+            return;
+        }
+
+        var confirmed = await DialogHelper.ConfirmAsync(
+            Lang.T("publish.categoryDelete"),
+            Lang.T("publish.categoryDeleteConfirm", category.Name),
+            Lang.T("common.delete"),
+            Lang.T("common.cancel"));
+        if (!confirmed)
+        {
+            return;
+        }
+
+        if (!CategoryService.Delete(project, category.Name, out var errorKey))
+        {
+            ShowMessage(InfoBarSeverity.Error, Lang.T(errorKey ?? "category.deleteFailed", category.Name));
+            return;
+        }
+
+        _categoryFilter = "*";
+        await LoadPostsAsync();
+        ShowMessage(InfoBarSeverity.Success, Lang.T("publish.categoryDeleted", category.Name));
+    }
+
+    private async Task<string?> PromptCategoryNameAsync()
+    {
+        var box = new TextBox
+        {
+            Header = Lang.T("category.name"),
+            PlaceholderText = Lang.T("category.namePlaceholder"),
+            MaxLength = 64,
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(box, "NewCategoryBox");
+
+        var dialog = new ContentDialog
+        {
+            Title = Lang.T("category.newTitle"),
+            PrimaryButtonText = Lang.T("common.create"),
+            CloseButtonText = Lang.T("common.cancel"),
+            DefaultButton = ContentDialogButton.Primary,
+            Content = box,
+            XamlRoot = XamlRoot,
+        };
+        dialog.RequestedTheme = ThemeService.ToElementTheme(AppState.Current.Theme);
+
+        var result = await dialog.ShowAsync();
+        return result == ContentDialogResult.Primary ? box.Text : null;
+    }
+
+    private async void OnArticleCategoryChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressCategoryEvents || ArticleCategoryCombo.SelectedItem is not CategoryOption option)
+        {
+            return;
+        }
+
+        var value = option.Value;
+        if (string.Equals(value, _selectedArticleCategory, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        // 待发布文章：只记住发布时的分类，发布时再写入对应文件夹
+        if (_currentDraft is not null)
+        {
+            _currentDraft.Category = value;
+            _selectedArticleCategory = value;
+            return;
+        }
+
+        var project = AppState.Current.Project;
+        var editing = _editing;
+        if (project is null || editing is null)
+        {
+            return;
+        }
+
+        if (!editing.IsPublished)
+        {
+            _selectedArticleCategory = value;
+            return;
+        }
+
+        // 已发布文章：立即把文章和资源目录一起移动到目标分类
+        if (!CategoryService.MoveArticle(project, editing.SourcePath, value, out var newPath, out var errorKey) ||
+            newPath is null)
+        {
+            ShowMessage(InfoBarSeverity.Error, Lang.T(errorKey ?? "category.moveFailed", option.Name));
+            SetArticleCategorySelection(_selectedArticleCategory, isDraft: false);
+            return;
+        }
+
+        if (_publishedDrafts.TryGetValue(editing.SourcePath, out var state))
+        {
+            _publishedDrafts.Remove(editing.SourcePath);
+            _publishedDrafts[newPath] = state;
+        }
+
+        editing.SourcePath = newPath;
+        _selectedArticleCategory = value;
+        SourcePathText.Text = newPath;
+
+        await LoadPostsAsync();
+
+        var movedPost = Posts.FirstOrDefault(post =>
+            string.Equals(post.FullPath, newPath, StringComparison.OrdinalIgnoreCase));
+        if (movedPost is not null)
+        {
+            _suppressListSelection = true;
+            try
+            {
+                PostsListView.SelectedItem = movedPost;
+            }
+            finally
+            {
+                _suppressListSelection = false;
+            }
+        }
+
+        SetArticleCategorySelection(value, isDraft: false);
+        ShowMessage(
+            InfoBarSeverity.Success,
+            Lang.T("publish.categoryMoved", string.IsNullOrEmpty(value)
+                ? Lang.T("publish.categoryUncategorized")
+                : value));
+    }
+
+    private void SetArticleCategorySelection(string category, bool isDraft)
+    {
+        var items = new List<CategoryOption>
+        {
+            new()
+            {
+                Name = isDraft ? Lang.T("publish.categoryNone") : Lang.T("publish.categoryUncategorized"),
+                Value = string.Empty,
+            },
+        };
+        items.AddRange(_categories.Select(item => new CategoryOption
+        {
+            Name = item.Name,
+            Value = item.Name,
+        }));
+
+        _selectedArticleCategory = category ?? string.Empty;
+        _suppressCategoryEvents = true;
+        try
+        {
+            ArticleCategoryCombo.ItemsSource = items;
+            var index = items.FindIndex(option =>
+                string.Equals(option.Value, _selectedArticleCategory, StringComparison.OrdinalIgnoreCase));
+            if (index < 0)
+            {
+                _selectedArticleCategory = string.Empty;
+                index = 0;
+            }
+
+            ArticleCategoryCombo.SelectedIndex = index;
+        }
+        finally
+        {
+            _suppressCategoryEvents = false;
+        }
     }
 
     private async Task SwitchToPostAsync(ArticleInfo info)
@@ -179,6 +566,7 @@ public sealed partial class PublishPage : Page
         ApplyForm(draft.State.Title, draft.State.Date, draft.State.Tags);
         SourcePathText.Text = draft.SourcePath;
         BuildAssetGroups(draft.Body);
+        SetArticleCategorySelection(draft.Category, isDraft: true);
         UpdatePublishState();
 
         var detail = Lang.T("publish.loaded", draft.SourcePath);
@@ -229,6 +617,8 @@ public sealed partial class PublishPage : Page
             ApplyForm(title, date, tags);
             SourcePathText.Text = path;
             BuildAssetGroups(frontMatter.Body);
+            var category = project is null ? string.Empty : CategoryService.GetCategoryOf(project, path);
+            SetArticleCategorySelection(category, isDraft: false);
             UpdatePublishState();
 
             var detail = Lang.T("publish.loaded", path);
@@ -552,6 +942,7 @@ public sealed partial class PublishPage : Page
         ApplyForm(string.Empty, DateTime.Now, Array.Empty<string>());
         SourcePathText.Text = Lang.T("publish.noFile");
         BuildAssetGroups(null);
+        SetArticleCategorySelection(string.Empty, isDraft: true);
         UpdatePublishState();
     }
 
@@ -848,6 +1239,7 @@ public sealed partial class PublishPage : Page
             Body = editing.Body,
             OriginalFrontMatter = editing.FrontMatter,
             AssetSelections = BuildAssetSelections(),
+            Category = _selectedArticleCategory,
         };
 
         var targetPath = ArticlePublisher.ResolveTargetPath(project, request);
@@ -876,6 +1268,7 @@ public sealed partial class PublishPage : Page
             }
 
             _publishedDrafts.Remove(editing.SourcePath);
+            _categoryFilter = "*";
             await LoadPostsAsync();
 
             var detail = Lang.T("publish.success", result.TargetPath);
@@ -944,7 +1337,11 @@ public sealed partial class PublishPage : Page
         UpdatePublishState();
     }
 
-    private void UpdatePublishState() => PublishButton.IsEnabled = !_busy && _editing is not null;
+    private void UpdatePublishState()
+    {
+        PublishButton.IsEnabled = !_busy && _editing is not null;
+        ArticleCategoryCombo.IsEnabled = !_busy && _editing is not null;
+    }
 
     private void UpdateDraftsSummary()
     {

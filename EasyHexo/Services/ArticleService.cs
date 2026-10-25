@@ -25,10 +25,16 @@ public static class ArticleService
             try
             {
                 var modified = File.GetLastWriteTime(file);
+                var relativePath = Path.GetRelativePath(project.PostsPath, file);
+                var relativeDirectory = Path.GetDirectoryName(relativePath);
+                var category = string.IsNullOrEmpty(relativeDirectory)
+                    ? string.Empty
+                    : relativeDirectory.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
                 var info = new ArticleInfo
                 {
                     FullPath = file,
-                    RelativePath = Path.GetRelativePath(project.PostsPath, file),
+                    RelativePath = relativePath,
+                    Category = category,
                     Modified = modified,
                     Date = modified,
                 };

@@ -1,14 +1,18 @@
 # Hexo 配置易（Easy Hexo）
 
-面向 **Windows 10 / 11** 的 WinUI 3 桌面应用：分区化、可视化地维护 Hexo 站点的 `_config.yml` 与主题配置，一键切换主题、更换站点图标，并以表单方式发布 / 重发 Markdown 文章、按需整理文章里的本机图片与附件。
+面向 **Windows 10 / 11** 的 WinUI 3 桌面应用：分区化、可视化地维护 Hexo 站点的 `_config.yml` 与主题配置，一键切换主题、更换站点图标，并以表单方式发布 / 重发 Markdown 文章、按需整理文章里的本机图片与附件。 
 
 > 仓库地址：<https://github.com/monishguy/easy-hexo-by-monish>
 > 许可证：MIT（见仓库根目录 [LICENSE](LICENSE)）　|　技术栈：**C# + WinUI 3（Windows App SDK 1.7）+ .NET 8**
-> 当前版本：**1.2.1**（1.2.1：用户配置目录固定到 `%APPDATA%\EasyHexo`，替换软件目录也不丢站点、首次启动自动迁移旧设置；设置页左对齐并精简描述、站点目录按钮改为“浏览”，新增“用户配置目录”入口）
+> 当前版本：**1.3.0**（1.3.0：发布文章页支持按 `source\_posts` 子文件夹自动识别分类，可筛选、新建分类、删除空分类，单篇 / 勾选多篇调整分类，文章与同名资源目录会一起剪切移动；拖入文章默认“不进行分类”）
 
 ![配置编辑](docs/screenshots/config-editor.png)
 
+
+
 ![运行](docs/screenshots/run.png)
+
+
 
 | 发布文章 | 设置（浅色主题） |
 | --- | --- |
@@ -99,6 +103,7 @@ ewfavicon.png`，配置写为 `favicon: /newfavicon.png`；
 - 拖入/浏览导入 `.md` 后出现在“待发布”列表；修改标题后切到别的文章再切回，草稿内容正确恢复；
 - 配置列表滚动后展开/收起分组，滚动位置保持不变（不再跳回顶部）；顶部“基本信息”布局与站点图标预览正常，改值后高亮、可撤回；
 - “运行”页执行命令时显示进度圈，输出实时出现在框内，结束后显示退出码，可停止；
+- 分类：自动识别“分类1 / 分类2”、分类筛选、新建分类、删除空分类、单篇调整（文章 + 资源目录一起移动）、勾选多篇批量移动、拖入文章默认“不进行分类”并发布到 `_posts` 根目录；
 - 用户配置目录固定在 `%APPDATA%\EasyHexo`：旧版设置自动迁移、首次启动自动创建，重启后自动打开上次站点；
 - 设置页内容左对齐（非最小宽度时不再整体右偏），语言 / 主题无多余描述，站点目录按钮为“浏览”，并显示用户配置目录路径；
 - 窗口最小尺寸生效（1040×680），侧栏收起时隐藏根目录、展开后显示；
@@ -125,7 +130,7 @@ EasyHexo/
     ConfigRow.cs               # 配置列表行 ViewModel（分区标题 / 分组 / 各类型编辑器）
     EditorDraft.cs             # 导入的待发布文章 + 草稿状态
     AssetViews.cs              # 资源分组的 ViewModel（图片 / 文件 / 未识别项）
-    ArticleInfo.cs / FrontMatter.cs / TagItem.cs
+    ArticleInfo.cs / FrontMatter.cs / TagItem.cs / CategoryInfo.cs
   Services/
     AppPaths.cs                # 设置/日志路径 + AppSettings + SettingsService + AppLog
     AppState.cs                # 全局状态（根目录 / 语言 / 主题 / 资源分组记忆）
@@ -139,6 +144,7 @@ EasyHexo/
     FrontMatterService.cs      # front-matter 识别 / 解析 / 生成
     ArticleService.cs          # 扫描 source/_posts（按修改时间倒序）
     AssetService.cs            # ★ 资源扫描（图片/文件/未识别）+ 按选择复制改写
+    CategoryService.cs         # ★ _posts 分类识别 / 创建 / 删除 / 文章与资源目录剪切移动
     ArticlePublisher.cs        # ★ 发布流程：资源处理 → front-matter → 写 _posts
     TempFileService.cs / TextFileService.cs
   Localization/                # 运行时中英文（无需重启，立即切换）
@@ -189,6 +195,11 @@ docs/screenshots/              # README 截图
 | 每组/每项复选框、默认勾选、记住设置、收起/展开 | `AssetGroupVm` / `AssetItemVm`；图片/文件的组勾选状态写入 `settings.json`（记住设置），未识别项默认不勾选且不记住 |
 | 未识别项“浏览”指定本机文件后自动替换并复制 | `OnAssetBrowseClick` 记录路径 → `AssetSelection.SourcePathOverride` → 发布时复制并改写链接 |
 | 取消勾选的资源保持原样 | `AssetSelection.Include=false`，链接与文件都不动 |
+| 自动识别分类 | `CategoryService.Scan`：`source\_posts` 下每个一级子文件夹视为一个分类，其中的文章归入该分类；直接放在 `_posts` 下的文章为“未分类”；列表显示分类名，并可按分类筛选 |
+| 新建分类 / 删除空分类 | 左侧“新建分类”输入名称创建文件夹；“删除空分类”只允许删除没有文章、也没有残留文件的分类 |
+| 单个 / 批量调整分类 | 编辑区“分类”下拉框调整单篇（已发布文章会立即移动文件，草稿在发布时生效）；每条文章前的复选框可多选，选择目标分类后点“移动”批量调整 |
+| 调整分类时同步剪切资源 | 文章和同名资源目录一起移动：`_posts\标题.md` + `_posts\标题\img.png` → `_posts\分类1\标题.md` + `_posts\分类1\标题\img.png` |
+| 拖入文章默认“不进行分类” | 导入的草稿默认“不进行分类”（发布到 `_posts` 根目录），下拉框包含全部已有分类 |
 | 已发布文章可重新编辑发布 | 左侧“已发布文章”选择 → 载入表单 → 写回原路径 |
 
 ### 5.4 运行（对应原来的 Hexo.bat）
@@ -252,6 +263,8 @@ docs/screenshots/              # README 截图
 - front-matter 只映射 `title` / `date` / `tags`（`tags:` 的块序列写法也能识别），其它键原样保留；日期秒精度受界面时间选择器限制（没有单独秒输入时按 `00` 秒写入）。
 - 资源链接只处理 Markdown 的 `![alt](url)` / `[text](url)`（本机绝对路径或相对文章目录的路径；相对路径按文章所在文件夹解析，无扩展名的页面链接会被忽略）；HTML 的 `<img src>` 不处理；路径中带右括号 `)` 的链接不解析。
 - 主题配置编辑按文件缩进展开，不提供分区排序与键名翻译；文章正文富文本编辑、单实例限制未实现。
+- 分类以 `source\_posts` 的**一级子文件夹**为准（更深的子文件夹不单独作为分类）；移动分类只移动文章文件和同名资源目录，不会改写 `front-matter` 里的 `categories` 字段。
+- 删除空分类要求文件夹内没有任何文件；文章移走后若资源目录还残留，需要先手动清理。
 - 运行页需要本机已安装 Hexo（PATH 中能找到 `hexo`）；“本地预览 / 监听生成”会持续运行，点“停止”结束。
 - 顶部“基本信息”只编辑配置里已存在的键（例如没有 `keywords` 就不会凭空创建）。
 
