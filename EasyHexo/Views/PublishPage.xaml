@@ -50,6 +50,7 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <ComboBox
                                 x:Name="BatchCategoryCombo"
@@ -63,6 +64,16 @@
                                 Click="OnBatchMoveClick"
                                 AutomationProperties.AutomationId="BatchMoveButton"
                                 l:Trans.Content="publish.categoryMove" />
+                            <Button
+                                x:Name="DeletePostsButton"
+                                Grid.Column="2"
+                                Padding="10,4"
+                                Background="#C42B1C"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Click="OnDeleteCheckedPostsClick"
+                                AutomationProperties.AutomationId="DeletePostsButton"
+                                l:Trans.Content="publish.delete" />
                         </Grid>
                     </StackPanel>
                 </Border>

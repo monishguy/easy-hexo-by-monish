@@ -27,7 +27,27 @@ public sealed partial class RunPage : Page
         Unloaded += OnPageUnloaded;
     }
 
-    private void OnPageLoaded(object sender, RoutedEventArgs e) => UpdateWorkingState();
+    private void OnPageLoaded(object sender, RoutedEventArgs e)
+    {
+        UpdateWorkingState();
+        SortCommandButtons();
+    }
+
+    /// <summary>按按钮文字排序（字符顺序），保持 4 列布局。</summary>
+    private void SortCommandButtons()
+    {
+        var buttons = CommandGrid.Children.OfType<Button>().ToList();
+        buttons.Sort((left, right) => string.Compare(
+            left.Content?.ToString(),
+            right.Content?.ToString(),
+            StringComparison.CurrentCulture));
+
+        for (var i = 0; i < buttons.Count; i++)
+        {
+            Grid.SetRow(buttons[i], i / 4);
+            Grid.SetColumn(buttons[i], i % 4);
+        }
+    }
 
     private void OnPageUnloaded(object sender, RoutedEventArgs e)
     {
@@ -81,8 +101,6 @@ public sealed partial class RunPage : Page
     private async void OnGenerateForceClick(object sender, RoutedEventArgs e) => await RunAsync("hexo generate --force");
 
     private async void OnGenerateWatchClick(object sender, RoutedEventArgs e) => await RunAsync("hexo generate --watch");
-
-    private async void OnListPostsClick(object sender, RoutedEventArgs e) => await RunAsync("hexo list post");
 
     private async void OnVersionClick(object sender, RoutedEventArgs e) => await RunAsync("hexo version");
 

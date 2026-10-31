@@ -4,6 +4,7 @@ using EasyHexo.Views;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace EasyHexo;
 
@@ -75,7 +76,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>右键菜单 / 命令行打开：跳到“文章管理”并导入文件。</summary>
-    public async void OpenPublishFile(string path)
+    public async void OpenPublishFiles(IReadOnlyList<string> paths)
     {
         try
         {
@@ -88,7 +89,7 @@ public sealed partial class MainWindow : Window
             await Task.Yield();
             if (ContentFrame.Content is PublishPage page)
             {
-                await page.ImportFromPathAsync(path);
+                await page.ImportFromPathsAsync(paths);
             }
         }
         catch (Exception ex)

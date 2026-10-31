@@ -20,6 +20,7 @@ public sealed partial class TextEditorPage : Page
     private bool _usesCrLf;
     private bool _trailingNewline;
     private bool _suppressHighlight;
+    private bool _textChangedGuard;
 
     private static readonly Regex KeyRegex = new(@"^(\s*)([\w.\-]+)(\s*:)", RegexOptions.Multiline);
     private static readonly Regex CommentRegex = new(@"#.*$", RegexOptions.Multiline);
@@ -65,7 +66,9 @@ public sealed partial class TextEditorPage : Page
             _usesCrLf = text.Contains("\r\n");
             _trailingNewline = text.EndsWith("\n", StringComparison.Ordinal) || text.EndsWith("\r", StringComparison.Ordinal);
 
+            _textChangedGuard = true;
             Editor.Document.SetText(TextSetOptions.None, text);
+            _textChangedGuard = false;
             UpdateLineNumbers();
             ApplyHighlight();
             TryHookScroll();
@@ -120,11 +123,15 @@ public sealed partial class TextEditorPage : Page
 
     private void OnEditorTextChanged(object sender, RoutedEventArgs e)
     {
-        UpdateLineNumbers();
-        if (!_suppressHighlight)
+        // 高亮本身会修改字符格式并再次触发 TextChanged；这里必须完全忽略，
+        // 否则会形成“高亮 → TextChanged → 再高亮”的死循环，界面看起来像卡死。
+        if (_suppressHighlight || _textChangedGuard)
         {
-            ApplyHighlight();
+            return;
         }
+
+        UpdateLineNumbers();
+        ApplyHighlight();
     }
 
     private void UpdateLineNumbers()

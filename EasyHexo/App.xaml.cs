@@ -14,27 +14,43 @@ public partial class App : Application
         AppState.Current.Initialize();
 
         // 资源管理器右键菜单 / 命令行传入的“发布到 Hexo 博客”文件
-        StartupPublishPath = ParsePublishArgument();
+        StartupPublishPaths = ParsePublishArguments();
     }
 
     /// <summary>主窗口（WinUI 3 里没有 UWP 的 Window.Current，这里自己保存一份）。</summary>
     public static Window? MainWindow { get; private set; }
 
-    /// <summary>启动参数 --publish &lt;file&gt; 指定的文件。</summary>
-    public static string? StartupPublishPath { get; private set; }
+    /// <summary>启动参数 --publish &lt;files...&gt; 指定的文件（支持多选）。</summary>
+    public static IReadOnlyList<string> StartupPublishPaths { get; private set; } = Array.Empty<string>();
 
-    private static string? ParsePublishArgument()
+    private static List<string> ParsePublishArguments()
     {
+        var result = new List<string>();
         var arguments = Environment.GetCommandLineArgs();
-        for (var i = 0; i < arguments.Length - 1; i++)
+        for (var i = 0; i < arguments.Length; i++)
         {
-            if (string.Equals(arguments[i], "--publish", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(arguments[i], "--publish", StringComparison.OrdinalIgnoreCase))
             {
-                return arguments[i + 1];
+                continue;
             }
+
+            for (var j = i + 1; j < arguments.Length; j++)
+            {
+                if (arguments[j].StartsWith("--", StringComparison.Ordinal))
+                {
+                    break;
+                }
+
+                if (File.Exists(arguments[j]))
+                {
+                    result.Add(arguments[j]);
+                }
+            }
+
+            break;
         }
 
-        return null;
+        return result;
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -43,10 +59,10 @@ public partial class App : Application
         MainWindow = window;
         window.Activate();
 
-        if (!string.IsNullOrEmpty(StartupPublishPath))
+        if (StartupPublishPaths.Count > 0)
         {
-            AppLog.Write("启动参数 --publish: " + StartupPublishPath);
-            window.OpenPublishFile(StartupPublishPath);
+            AppLog.Write("启动参数 --publish: " + string.Join(" | ", StartupPublishPaths));
+            window.OpenPublishFiles(StartupPublishPaths);
         }
     }
 

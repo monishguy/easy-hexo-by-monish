@@ -55,7 +55,7 @@ public static class ShellIntegrationService
 
                 verb.SetValue(null, title);
                 verb.SetValue("Icon", $"\"{ExecutablePath}\"");
-                verb.SetValue("MultiSelectModel", "Single");
+                verb.SetValue("MultiSelectModel", "Player");
 
                 using var command = verb.CreateSubKey("command");
                 command?.SetValue(null, CommandLine);

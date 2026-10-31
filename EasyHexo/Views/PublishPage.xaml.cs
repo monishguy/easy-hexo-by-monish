@@ -398,6 +398,139 @@ public sealed partial class PublishPage : Page
         }
     }
 
+    // ── 删除文章 ─────────────────────────────────────────────────────
+
+    private async void OnDeleteCheckedPostsClick(object sender, RoutedEventArgs e)
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        var selected = _allPosts.Where(post => post.IsChecked).ToList();
+        if (selected.Count == 0)
+        {
+            ShowMessage(InfoBarSeverity.Warning, Lang.T("publish.categorySelectPosts"));
+            return;
+        }
+
+        var choice = await ShowDeleteChoiceAsync(selected.Count);
+        if (choice is null)
+        {
+            return;
+        }
+
+        var withAssets = choice == "assets";
+        var titles = string.Join("、", selected.Select(post => $"“{post.Title}”"));
+        var message = Lang.T(
+            "publish.deleteConfirmMessage",
+            titles,
+            withAssets ? Lang.T("publish.deleteAssetSuffix") : string.Empty);
+
+        if (!await ConfirmDeleteAsync(message))
+        {
+            return;
+        }
+
+        SetBusy(true);
+        var deleted = 0;
+        try
+        {
+            await Task.Run(() =>
+            {
+                foreach (var post in selected)
+                {
+                    try
+                    {
+                        File.Delete(post.FullPath);
+                        if (withAssets)
+                        {
+                            var directory = Path.GetDirectoryName(post.FullPath);
+                            var baseName = Path.GetFileNameWithoutExtension(post.FullPath);
+                            if (!string.IsNullOrEmpty(directory))
+                            {
+                                var assetDirectory = Path.Combine(directory, baseName);
+                                if (Directory.Exists(assetDirectory))
+                                {
+                                    Directory.Delete(assetDirectory, recursive: true);
+                                }
+                            }
+                        }
+
+                        deleted++;
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLog.Write($"删除文章失败：{post.FullPath}", ex);
+                    }
+                }
+            });
+
+            foreach (var post in selected)
+            {
+                _publishedDrafts.Remove(post.FullPath);
+            }
+
+            if (_editing is not null &&
+                selected.Any(post => string.Equals(post.FullPath, _editing.SourcePath, StringComparison.OrdinalIgnoreCase)))
+            {
+                ClearEditor(resetSelection: true);
+            }
+
+            await LoadPostsAsync();
+            UpdateBatchCount();
+            ShowMessage(InfoBarSeverity.Success, Lang.T("publish.deleted", deleted));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("删除文章失败", ex);
+            ShowMessage(InfoBarSeverity.Error, Lang.T("publish.deleteFailed", ex.Message));
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private async Task<string?> ShowDeleteChoiceAsync(int count)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = Lang.T("publish.deleteTitle"),
+            Content = Lang.T("publish.deleteMessage", count),
+            PrimaryButtonText = Lang.T("publish.deleteCancel"),
+            SecondaryButtonText = Lang.T("publish.deleteOnly"),
+            CloseButtonText = Lang.T("publish.deleteWithAssets"),
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+        dialog.RequestedTheme = ThemeService.ToElementTheme(AppState.Current.Theme);
+
+        var result = await dialog.ShowAsync();
+        return result switch
+        {
+            ContentDialogResult.Primary => null,
+            ContentDialogResult.Secondary => "only",
+            ContentDialogResult.None => "assets",
+            _ => null,
+        };
+    }
+
+    private async Task<bool> ConfirmDeleteAsync(string message)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = Lang.T("publish.deleteConfirmTitle"),
+            Content = message,
+            PrimaryButtonText = Lang.T("publish.deleteConfirm"),
+            CloseButtonText = Lang.T("common.cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot,
+        };
+        dialog.RequestedTheme = ThemeService.ToElementTheme(AppState.Current.Theme);
+        return await dialog.ShowAsync() == ContentDialogResult.Primary;
+    }
+
     private async void OnNewCategoryClick(object sender, RoutedEventArgs e)
     {
         var project = AppState.Current.Project;
@@ -830,19 +963,31 @@ public sealed partial class PublishPage : Page
 
     // ── 文件拖放 / 浏览 ─────────────────────────────────────────────
 
-    /// <summary>从命令行 / 右键菜单导入一个 .md / .txt 文件。</summary>
-    public async Task ImportFromPathAsync(string path)
+    /// <summary>从命令行 / 右键菜单导入一个或多个 .md / .txt 文件。</summary>
+    public Task ImportFromPathAsync(string path) => ImportFromPathsAsync(new[] { path });
+
+    public async Task ImportFromPathsAsync(IEnumerable<string> paths)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            var files = new List<StorageFile>();
+            foreach (var path in paths)
             {
-                ShowMessage(InfoBarSeverity.Error, Lang.T("publish.loadFailed", path));
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                {
+                    continue;
+                }
+
+                files.Add(await StorageFile.GetFileFromPathAsync(path));
+            }
+
+            if (files.Count == 0)
+            {
+                ShowMessage(InfoBarSeverity.Error, Lang.T("publish.loadFailed", string.Join("; ", paths)));
                 return;
             }
 
-            var file = await StorageFile.GetFileFromPathAsync(path);
-            await HandleFilesAsync(new[] { file });
+            await HandleFilesAsync(files);
         }
         catch (Exception ex)
         {
