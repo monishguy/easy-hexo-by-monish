@@ -208,15 +208,13 @@ New-Item -ItemType Directory -Force -Path $zipStage | Out-Null
 
 Copy-Item (Join-Path $binDir '*') $zipStage -Recurse -Force
 
-# 把几十个语言资源目录收进 locales\，避免根目录被大量相似文件夹占满
-$localeDir = Join-Path $zipStage 'locales'
-New-Item -ItemType Directory -Force -Path $localeDir | Out-Null
+# 精简语言资源：只保留中文 / 英文，其余语言目录删除，避免根目录被几十个相似文件夹占满。
+# 注意：不能把这些目录移动到子文件夹，WinUI 控件会按当前系统语言从根目录加载 MUI，移动会导致启动崩溃。
+$keepLocales = @('en-us', 'zh-cn', 'zh-tw', 'zh-hans', 'zh-hant')
 Get-ChildItem $zipStage -Directory | Where-Object {
     $_.Name -match '^[a-z]{2,3}(-[A-Za-z0-9]+)*$' -and
-    $_.Name -notin @('Assets', 'runtimes', 'docs', 'locales')
-} | ForEach-Object {
-    Move-Item $_.FullName (Join-Path $localeDir $_.Name) -Force
-}
+    ($keepLocales -notcontains $_.Name.ToLowerInvariant())
+} | Remove-Item -Recurse -Force
 
 # 附上说明文档（README 引用的截图一并带上）
 Copy-Item (Join-Path $repoRoot 'README.md') $zipStage -Force
@@ -254,7 +252,7 @@ Easy Hexo $Version（$Configuration / $rid）
 --------
 * EasyHexo.exe               主程序
 * *.dll / *.pri / *.xbf      运行时与资源（请勿删除）
-* locales\                   语言资源（Windows 运行时使用，删除不影响启动）
+* 语言资源目录             已精简为中文 / 英文（WinUI 运行时需要，不能移动或删除）
 * README.md, docs\           源码说明文档（含开发环境与实现说明）
 
 注意

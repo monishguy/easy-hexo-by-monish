@@ -91,7 +91,7 @@ function Write-Directory([string]$fullPath, [string]$relativePath, [int]$indent)
         Add-Line ("<Component Id=`"$compId`" Guid=`"*`">") $contentIndent
         $shortcut = ''
         if ($file.Name -eq 'EasyHexo.exe') {
-            $shortcut = "`n" + (' ' * ($contentIndent + 2)) + '<Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="Hexo 配置易" Target="[INSTALLFOLDER]EasyHexo.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />'
+            $shortcut = "`n" + (' ' * ($contentIndent + 2)) + '<Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="Hexo 配置易" Target="[INSTALLFOLDER]EasyHexo.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" Advertise="no" />'
         }
 
         Add-Line ("<File Id=`"$fileId`" Source=`"" + (ConvertTo-Xml $file.FullName) + "`" KeyPath=`"yes`" />$shortcut") ($contentIndent + 2)
@@ -110,17 +110,21 @@ function Write-Directory([string]$fullPath, [string]$relativePath, [int]$indent)
 }
 
 $packageHeader = @"
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package Name="Hexo 配置易 (Easy Hexo)" Manufacturer="monishguy" Version="$Version"
            UpgradeCode="{B7D3E58C-4F2A-4C7E-9F3B-2D6A1E8C5F90}" Scope="perUser"
-           Language="1033" InstallerVersion="500" Compressed="yes">
+           Language="1033" Codepage="936" InstallerVersion="500" Compressed="yes">
     <MajorUpgrade DowngradeErrorMessage="已经安装了更新版本的 Hexo 配置易。" />
     <MediaTemplate EmbedCab="yes" />
     <Icon Id="AppIcon" SourceFile="$(ConvertTo-Xml $IconPath)" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
-    <Property Id="ARPNOMODIFY" Value="1" />
     <Property Id="ARPHELPLINK" Value="https://github.com/monishguy/easy-hexo-by-monish" />
     <Property Id="ARPCOMMENTS" Value="Hexo 配置易（Easy Hexo）" />
+    <Property Id="ARPNOREPAIR" Value="1" />
+    <Property Id="DISABLEADVTSHORTCUTS" Value="1" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(ConvertTo-Xml (Join-Path $repoRoot 'tools\installer\license.rtf'))" />
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
 
     <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="ProgramsFolder" Name="Programs">
@@ -180,7 +184,7 @@ $wxsPath = Join-Path $env:TEMP "EasyHexo-$Version.wxs"
 Write-Host "  WXS: $wxsPath" -ForegroundColor DarkGray
 
 Remove-Item $OutputPath -Force -ErrorAction SilentlyContinue
-& wix build $wxsPath -o $OutputPath -arch x64 2>&1 | ForEach-Object { Write-Host $_ }
+& wix build $wxsPath -o $OutputPath -arch x64 -ext WixToolset.UI.wixext 2>&1 | ForEach-Object { Write-Host $_ }
 if (-not (Test-Path $OutputPath)) {
     throw "MSI 生成失败。"
 }

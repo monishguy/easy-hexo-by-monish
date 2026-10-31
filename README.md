@@ -4,7 +4,7 @@
 
 > 仓库地址：<https://github.com/monishguy/easy-hexo-by-monish>
 > 许可证：MIT（见仓库根目录 [LICENSE](LICENSE)）　|　技术栈：**C# + WinUI 3（Windows App SDK 1.7）+ .NET 8**
-> 当前版本：**1.4.0**（1.4.0：发布文章 → 文章管理；全部标签筛选与已有标签导入；批量分类操作移到左侧；新增文本编辑器、在其他应用打开、软件图标；提供 Windows 安装包（MSI）与 .md/.txt 右键“发布到 Hexo 博客”；运行包语言目录收进 locales 目录）
+> 当前版本：**1.4.0**（1.4.0：发布文章 → 文章管理；全部标签筛选与已有标签导入；批量分类操作移到左侧；新增文本编辑器、在其他应用打开、软件图标；提供 Windows 安装包（MSI）与 .md/.txt 右键“发布到 Hexo 博客”；运行包语言资源精简为中文 / 英文，避免语言目录崩溃）
 
 ![配置编辑](docs/screenshots/config-editor.png)
 
@@ -157,7 +157,7 @@ EasyHexo/
     Lang.cs / StringsZhCn.cs / StringsEnUs.cs / Trans.cs
     ConfigKeyTranslator.cs     # 配置项英文键名 → 中文显示名（仅显示，不改文件）
   Helpers/WindowHelper.cs      # HWND、文件夹/文件/图片选择器、对话框、打开目录
-tools/build-unpackaged.ps1     # 无 VS 环境构建可运行 zip（语言目录自动归入 locales\\）
+tools/build-unpackaged.ps1     # 无 VS 环境构建可运行 zip（语言资源精简为中文/英文）
 tools/build-installer.ps1      # 生成 MSI 安装包（WiX v7；perUser 安装，自带卸载 / 注册表 / 右键菜单）
 tools/make-icon.ps1            # 生成 Assets/EasyHexo.ico
 docs/screenshots/              # README 截图
@@ -238,7 +238,7 @@ docs/screenshots/              # README 截图
 | 软件图标 | `Assets\EasyHexo.ico`：Hexo 风格蓝色六边形 + 白色 H + 右下角齿轮徽章；编译进 exe，并设置窗口 / 任务栏图标 |
 | Windows 安装包 | `tools/build-installer.ps1` 用 WiX v7 生成 MSI：安装到 `%LOCALAPPDATA%\Programs\EasyHexo`，创建开始菜单快捷方式，写入 ARP 卸载信息与 App Paths，卸载时自动清理文件 / 注册表 |
 | 右键菜单 | 安装包注册（也可在设置页手动注册）HKCU 下 `.md` / `.txt` 的“发布到 Hexo 博客”菜单；点击后启动 `EasyHexo.exe --publish "<文件>"`，自动进入文章管理并导入该文件 |
-| 发布包目录归类 | 运行包把几十个语言资源目录统一收进 `locales\`，文档在 `docs\`，根目录只保留程序与运行库 |
+| 语言目录精简 | 运行包只保留 `zh-CN` / `zh-TW` / `en-us` 语言资源（WinUI 要求这些目录在程序根目录，不能移动）；文档在 `docs\`，图标在 `Assets\` |
 ## 6. `_config.yml` 写回规则
 
 > **键名显示与写回是分离的**：简体中文界面下，`title`、`pretty_urls.trailing_index` 等固定配置项会显示为「站点标题」「去掉链接中的 index.html」等中文名（英文原名以灰色小字 / 鼠标悬停提示展示）；写回文件时仍然使用**原始英文键名**，不会把中文键写入 `_config.yml`。主题配置不翻译键名。
