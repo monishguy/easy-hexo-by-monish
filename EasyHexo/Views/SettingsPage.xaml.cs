@@ -101,6 +101,32 @@ public sealed partial class SettingsPage : Page
         ShowMessage(InfoBarSeverity.Success, Lang.T("settings.rootChanged"));
     }
 
+    private void OnRegisterShellClick(object sender, RoutedEventArgs e)
+    {
+        if (ShellIntegrationService.Register(out var error))
+        {
+            ApplyLocalization();
+            ShowMessage(InfoBarSeverity.Success, Lang.T("settings.shellOn"));
+        }
+        else
+        {
+            ShowMessage(InfoBarSeverity.Error, Lang.T("settings.shellFailed", error ?? string.Empty));
+        }
+    }
+
+    private void OnRemoveShellClick(object sender, RoutedEventArgs e)
+    {
+        if (ShellIntegrationService.Unregister(out var error))
+        {
+            ApplyLocalization();
+            ShowMessage(InfoBarSeverity.Success, Lang.T("settings.shellOff"));
+        }
+        else
+        {
+            ShowMessage(InfoBarSeverity.Error, Lang.T("settings.shellFailed", error ?? string.Empty));
+        }
+    }
+
     private void OnOpenConfigDirClick(object sender, RoutedEventArgs e)
     {
         try

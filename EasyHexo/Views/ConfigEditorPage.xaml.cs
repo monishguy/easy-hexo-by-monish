@@ -323,6 +323,40 @@ public sealed partial class ConfigEditorPage : Page
         RebuildVisible();
     }
 
+    private void OnOpenWithClick(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_configPath) || !File.Exists(_configPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = _configPath,
+                Verb = "openas",
+                UseShellExecute = true,
+            };
+            System.Diagnostics.Process.Start(startInfo);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("在其他应用打开失败", ex);
+            ShowMessage(InfoBarSeverity.Error, Lang.T("config.openFailed", ex.Message));
+        }
+    }
+
+    private void OnOpenTextEditorClick(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_configPath) || !File.Exists(_configPath))
+        {
+            return;
+        }
+
+        Frame?.Navigate(typeof(TextEditorPage), _configPath);
+    }
+
     private void OnExpandAllClick(object sender, RoutedEventArgs e)
     {
         _collapsedSections.Clear();
@@ -763,6 +797,7 @@ public sealed partial class ConfigEditorPage : Page
         EditThemeConfigButton.IsEnabled = !inThemeMode && selected?.HasConfig == true;
 
         ThemeHintText.Text = names.Count == 0 ? Lang.T("config.theme.noThemes") : string.Empty;
+        ThemeHintText.Visibility = names.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private HexoTheme? SelectedTheme()

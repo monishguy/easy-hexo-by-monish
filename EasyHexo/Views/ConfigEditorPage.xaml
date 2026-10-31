@@ -50,6 +50,8 @@
                         <TextBlock l:Trans.Text="common.undo" />
                     </StackPanel>
                 </Button>
+                <Button Click="OnOpenWithClick" AutomationProperties.AutomationId="OpenWithButton" l:Trans.Content="config.openWith" />
+                <Button Click="OnOpenTextEditorClick" AutomationProperties.AutomationId="TextEditorButton" l:Trans.Content="config.textEditor" />
                 <Button Click="OnExpandAllClick" l:Trans.Content="common.expandAll" />
                 <Button Click="OnCollapseAllClick" l:Trans.Content="common.collapseAll" />
                 <Button Click="OnReloadClick" l:Trans.Content="common.reload" />

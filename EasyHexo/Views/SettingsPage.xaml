@@ -96,6 +96,36 @@
                 </StackPanel>
             </Border>
 
+            <!-- 资源管理器右键菜单 -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <StackPanel Spacing="8">
+                    <TextBlock
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        l:Trans.Text="settings.shellTitle" />
+                    <TextBlock
+                        x:Name="ShellStatusText"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        AutomationProperties.AutomationId="ShellStatusText" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button
+                            Style="{StaticResource AccentButtonStyle}"
+                            Click="OnRegisterShellClick"
+                            AutomationProperties.AutomationId="ShellRegisterButton"
+                            l:Trans.Content="settings.shellRegister" />
+                        <Button
+                            Click="OnRemoveShellClick"
+                            AutomationProperties.AutomationId="ShellRemoveButton"
+                            l:Trans.Content="settings.shellRemove" />
+                    </StackPanel>
+                    <TextBlock
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap"
+                        l:Trans.Text="settings.shellHint" />
+                </StackPanel>
+            </Border>
+
             <!-- 关于 -->
             <Border Style="{StaticResource CardBorderStyle}">
                 <StackPanel Spacing="8">

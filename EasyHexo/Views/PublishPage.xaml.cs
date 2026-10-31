@@ -58,6 +58,7 @@ public sealed partial class PublishPage : Page
     private bool _loadedOnce;
     private bool _busy;
     private string _categoryFilter = "*";
+    private string _tagFilter = "*";
     private string _selectedArticleCategory = string.Empty;
 
     public PublishPage()
@@ -71,6 +72,8 @@ public sealed partial class PublishPage : Page
     public ObservableCollection<ImportDraft> Drafts { get; } = new();
 
     public ObservableCollection<TagItem> Tags { get; } = new();
+
+    public ObservableCollection<TagStat> ExistingTags { get; } = new();
 
     public ObservableCollection<AssetGroupVm> AssetGroups { get; } = new();
 
@@ -116,6 +119,7 @@ public sealed partial class PublishPage : Page
             _allPosts.AddRange(posts);
             _categories.AddRange(categories);
             BuildCategoryCombos();
+            UpdateTagStats();
             ApplyPostFilter();
             UpdateBatchCount();
 
@@ -173,18 +177,99 @@ public sealed partial class PublishPage : Page
     private void ApplyPostFilter()
     {
         Posts.Clear();
-        var filtered = _categoryFilter == "*"
-            ? _allPosts
-            : _allPosts.Where(post => string.Equals(post.Category, _categoryFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+        IEnumerable<ArticleInfo> filtered = _allPosts;
 
-        foreach (var post in filtered)
+        if (_categoryFilter != "*")
+        {
+            filtered = filtered.Where(post =>
+                string.Equals(post.Category, _categoryFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (_tagFilter != "*")
+        {
+            filtered = filtered.Where(post => post.Tags.Any(tag =>
+                string.Equals(tag, _tagFilter, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        var list = filtered.ToList();
+        foreach (var post in list)
         {
             Posts.Add(post);
         }
 
-        PostsCountText.Text = filtered.Count == 0
+        PostsCountText.Text = list.Count == 0
             ? Lang.T("publish.postsEmpty")
-            : Lang.T("publish.postCount", filtered.Count);
+            : Lang.T("publish.postCount", list.Count);
+    }
+
+    private void UpdateTagStats()
+    {
+        var stats = _allPosts
+            .SelectMany(post => post.Tags)
+            .GroupBy(tag => tag, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new TagStat { Name = group.Key, Count = group.Count() })
+            .OrderByDescending(stat => stat.Count)
+            .ThenBy(stat => stat.Name, StringComparer.CurrentCulture)
+            .ToList();
+
+        ExistingTags.Clear();
+        foreach (var stat in stats)
+        {
+            ExistingTags.Add(stat);
+        }
+
+        var options = new List<TagStat> { new() { Name = "*", Count = 0 } };
+        options.AddRange(stats);
+
+        _suppressCategoryEvents = true;
+        try
+        {
+            TagFilterCombo.ItemsSource = options;
+            var index = options.FindIndex(option =>
+                string.Equals(option.Name, _tagFilter, StringComparison.OrdinalIgnoreCase));
+            TagFilterCombo.SelectedIndex = index >= 0 ? index : 0;
+            if (index < 0)
+            {
+                _tagFilter = "*";
+            }
+        }
+        finally
+        {
+            _suppressCategoryEvents = false;
+        }
+    }
+
+    private void OnTagFilterChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressCategoryEvents || TagFilterCombo.SelectedItem is not TagStat stat)
+        {
+            return;
+        }
+
+        _tagFilter = stat.Name;
+        ApplyPostFilter();
+    }
+
+    private void OnExistingTagClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: TagStat stat } || string.IsNullOrEmpty(stat.Name))
+        {
+            return;
+        }
+
+        if (_editing is null)
+        {
+            ShowMessage(InfoBarSeverity.Warning, Lang.T("publish.needFile"));
+            return;
+        }
+
+        if (Tags.Any(tag => string.Equals(tag.Name, stat.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        AddTag(stat.Name);
+        ShowMessage(InfoBarSeverity.Success, Lang.T("publish.tagImported", stat.Name));
     }
 
     private void OnCategoryFilterChanged(object sender, SelectionChangedEventArgs e)
@@ -230,6 +315,13 @@ public sealed partial class PublishPage : Page
 
     private void OnPostCheckChanged(object sender, RoutedEventArgs e)
     {
+        // Checked / Unchecked 会在双向绑定写回模型之前触发，这里先把状态记到模型上，
+        // 否则计数会慢一拍（勾选显示 0 篇、取消后反而显示 1 篇）。
+        if (sender is CheckBox box && box.DataContext is ArticleInfo article)
+        {
+            article.IsChecked = box.IsChecked == true;
+        }
+
         UpdateBatchCount();
     }
 
@@ -237,6 +329,7 @@ public sealed partial class PublishPage : Page
     {
         var count = _allPosts.Count(post => post.IsChecked);
         BatchCountText.Text = Lang.T("publish.categorySelected", count);
+        BatchPanel.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async void OnBatchMoveClick(object sender, RoutedEventArgs e)
@@ -737,6 +830,27 @@ public sealed partial class PublishPage : Page
 
     // ── 文件拖放 / 浏览 ─────────────────────────────────────────────
 
+    /// <summary>从命令行 / 右键菜单导入一个 .md / .txt 文件。</summary>
+    public async Task ImportFromPathAsync(string path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                ShowMessage(InfoBarSeverity.Error, Lang.T("publish.loadFailed", path));
+                return;
+            }
+
+            var file = await StorageFile.GetFileFromPathAsync(path);
+            await HandleFilesAsync(new[] { file });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("从外部打开文件失败", ex);
+            ShowMessage(InfoBarSeverity.Error, Lang.T("publish.loadFailed", ex.Message));
+        }
+    }
+
     private async void OnBrowseClick(object sender, RoutedEventArgs e)
     {
         try
@@ -980,20 +1094,24 @@ public sealed partial class PublishPage : Page
 
         foreach (var part in text.Split(new[] { ',', '，', ';' }, StringSplitOptions.RemoveEmptyEntries))
         {
-            var tag = part.Trim();
-            if (tag.Length == 0)
-            {
-                continue;
-            }
-
-            if (!Tags.Any(existing => string.Equals(existing.Name, tag, StringComparison.OrdinalIgnoreCase)))
-            {
-                Tags.Add(new TagItem(tag));
-            }
+            AddTag(part.Trim());
         }
 
         TagInput.Text = string.Empty;
         TagInput.Focus(FocusState.Programmatic);
+    }
+
+    private void AddTag(string tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
+        {
+            return;
+        }
+
+        if (!Tags.Any(existing => string.Equals(existing.Name, tag, StringComparison.OrdinalIgnoreCase)))
+        {
+            Tags.Add(new TagItem(tag.Trim()));
+        }
     }
 
     private void OnRemoveTagClick(object sender, RoutedEventArgs e)

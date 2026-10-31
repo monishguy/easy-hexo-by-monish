@@ -12,7 +12,7 @@ internal static class StringsEnUs
         // ── Common ────────────────────────────────────────────
         ["app.title"] = "Easy Hexo",
         ["nav.config"] = "Config editor",
-        ["nav.publish"] = "Publish",
+        ["nav.publish"] = "Articles",
         ["nav.settings"] = "Settings",
 
         ["common.success"] = "Success",
@@ -118,8 +118,8 @@ internal static class StringsEnUs
         ["config.favicon.unknown"] = "Icon path not recognized",
 
         // ── Publish ───────────────────────────────────────────
-        ["publish.title"] = "Publish",
-        ["publish.subtitle"] = "Pick a post, fill in title, date and tags, then click \"Publish\".",
+        ["publish.title"] = "Articles",
+        ["publish.subtitle"] = "Edit published posts or import drafts here, then publish.",
         ["publish.posts"] = "Published posts",
         ["publish.postCount"] = "{0} post(s)",
         ["publish.postsEmpty"] = "No posts in _posts yet.",
@@ -163,6 +163,9 @@ internal static class StringsEnUs
         ["publish.editHint"] = "Unpublished changes are saved as a draft when you switch.",
 
         ["publish.categoryLabel"] = "Category",
+        ["publish.tagAll"] = "All tags",
+        ["publish.tagImported"] = "Tag added: {0}",
+        ["publish.existingTags"] = "Import existing tag",
         ["publish.categoryCreated"] = "Category created: {0}",
         ["publish.categoryDeleted"] = "Empty category deleted: {0}",
         ["publish.categoryDeleteConfirm"] = "Delete empty category \"{0}\"?",
@@ -257,6 +260,14 @@ internal static class StringsEnUs
         ["settings.themeLight"] = "Light",
         ["settings.themeDark"] = "Dark",
         ["settings.themeChanged"] = "Appearance theme switched.",
+        ["settings.shellTitle"] = "Context menu",
+        ["settings.shellRegister"] = "Register",
+        ["settings.shellRemove"] = "Remove",
+        ["settings.shellOn"] = "Registered: right-click .md / .txt to publish",
+        ["settings.shellOff"] = "Not registered",
+        ["settings.shellHint"] = "On Windows 11 it is under \"Show more options\".",
+        ["settings.shellFailed"] = "Failed: {0}",
+        ["shell.publishToHexo"] = "Publish to Hexo",
         ["settings.configDir"] = "User config folder",
         ["settings.openConfigDir"] = "Open",
         ["settings.root"] = "Site folder",

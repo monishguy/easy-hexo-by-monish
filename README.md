@@ -4,13 +4,15 @@
 
 > 仓库地址：<https://github.com/monishguy/easy-hexo-by-monish>
 > 许可证：MIT（见仓库根目录 [LICENSE](LICENSE)）　|　技术栈：**C# + WinUI 3（Windows App SDK 1.7）+ .NET 8**
-> 当前版本：**1.3.0**（1.3.0：发布文章页支持按 `source\_posts` 子文件夹自动识别分类，可筛选、新建分类、删除空分类，单篇 / 勾选多篇调整分类，文章与同名资源目录会一起剪切移动；拖入文章默认“不进行分类”）
+> 当前版本：**1.4.0**（1.4.0：发布文章 → 文章管理；全部标签筛选与已有标签导入；批量分类操作移到左侧；新增文本编辑器、在其他应用打开、软件图标；提供 Windows 安装包（MSI）与 .md/.txt 右键“发布到 Hexo 博客”；运行包语言目录收进 locales 目录）
 
 ![配置编辑](docs/screenshots/config-editor.png)
 
 
 
 ![运行](docs/screenshots/run.png)
+
+![文本编辑器](docs/screenshots/text-editor.png)
 
 
 
@@ -86,6 +88,7 @@ et8.0-windows10.0.19041.0\win-x64\EasyHexo.exe
 pwsh tools\build-unpackaged.ps1                        # Debug / x64 → releases\EasyHexo-<版本>-debug-win-x64.zip
 pwsh tools\build-unpackaged.ps1 -Configuration Release  # Release / x64
 pwsh tools\build-unpackaged.ps1 -FrameworkDependent     # 不打包 .NET 运行时（体积更小）
+pwsh tools\build-installer.ps1 -SourceDir <解压后的运行包目录>  # 生成 MSI 安装包（含卸载 / 右键菜单 / 注册表）
 ```
 
 默认把 **.NET 8 运行时 + Windows App SDK 运行时** 一起打进包里，解压即可运行；`releases\` 已在 `.gitignore` 中，不会进入版本库。
@@ -125,12 +128,14 @@ EasyHexo/
     ConfigEditorPage.xaml(.cs)   # 配置编辑（分区 / 可视化编辑器 / 撤销 / 主题 / 图标）
     PublishPage.xaml(.cs)        # 发布文章（待发布草稿 / 已发布文章 / 资源分组）
     RunPage.xaml(.cs)            # 运行 Hexo 命令（生成 / 清理 / 预览 / 部署 / 新建…）+ 进度圈与输出框
+    TextEditorPage.xaml(.cs)     # 配置文件文本编辑器（行号 / Tab / 高亮 / 保存 / 撤销 / 重做）
+  Assets/EasyHexo.ico(.png)      # 应用图标（Hexo 六边形 + 齿轮徽章）
     SettingsPage.xaml(.cs)       # 设置（语言 / 主题 / 根目录 / 关于）
   Models/
     ConfigRow.cs               # 配置列表行 ViewModel（分区标题 / 分组 / 各类型编辑器）
     EditorDraft.cs             # 导入的待发布文章 + 草稿状态
     AssetViews.cs              # 资源分组的 ViewModel（图片 / 文件 / 未识别项）
-    ArticleInfo.cs / FrontMatter.cs / TagItem.cs / CategoryInfo.cs
+    ArticleInfo.cs / FrontMatter.cs / TagItem.cs / CategoryInfo.cs / TagStat.cs
   Services/
     AppPaths.cs                # 设置/日志路径 + AppSettings + SettingsService + AppLog
     AppState.cs                # 全局状态（根目录 / 语言 / 主题 / 资源分组记忆）
@@ -145,13 +150,16 @@ EasyHexo/
     ArticleService.cs          # 扫描 source/_posts（按修改时间倒序）
     AssetService.cs            # ★ 资源扫描（图片/文件/未识别）+ 按选择复制改写
     CategoryService.cs         # ★ _posts 分类识别 / 创建 / 删除 / 文章与资源目录剪切移动
+    ShellIntegrationService.cs # ★ .md/.txt 右键“发布到 Hexo 博客”（HKCU 注册表）
     ArticlePublisher.cs        # ★ 发布流程：资源处理 → front-matter → 写 _posts
     TempFileService.cs / TextFileService.cs
   Localization/                # 运行时中英文（无需重启，立即切换）
     Lang.cs / StringsZhCn.cs / StringsEnUs.cs / Trans.cs
     ConfigKeyTranslator.cs     # 配置项英文键名 → 中文显示名（仅显示，不改文件）
   Helpers/WindowHelper.cs      # HWND、文件夹/文件/图片选择器、对话框、打开目录
-tools/build-unpackaged.ps1     # 无 VS 环境构建可运行 zip
+tools/build-unpackaged.ps1     # 无 VS 环境构建可运行 zip（语言目录自动归入 locales\\）
+tools/build-installer.ps1      # 生成 MSI 安装包（WiX v7；perUser 安装，自带卸载 / 注册表 / 右键菜单）
+tools/make-icon.ps1            # 生成 Assets/EasyHexo.ico
 docs/screenshots/              # README 截图
 ```
 
@@ -174,6 +182,7 @@ docs/screenshots/              # README 截图
 | 撤回上一步 | 顶部“撤回上一步”：文本框按一次编辑（获得焦点时记快照、失焦或点撤回时回退）算一步；开关 / 下拉 / 数字每次改动算一步；应用配置后清空 |
 | 顶部“基本信息”优先展示 | 站点名称 / 作者 / 站点描述 / 关键词 / 语言 / 时区显示在页面顶部，右侧放大显示站点图标；其余配置在下方按分区依次铺开 |
 | 展开 / 收起后保持滚动位置 | `RebuildVisible` 重建列表前后读取并恢复 `ScrollViewer.VerticalOffset`，不会跳回顶部 |
+| 在其他应用打开 / 文本编辑器 | 顶部“在其他应用打开”调起系统“打开方式”对话框；`转到文本编辑器` 打开内置文本编辑器（行号、Tab 缩进、YAML 高亮、保存 / 撤销 / 重做） |
 | 注释转只读描述 | 上方整行注释 + 行尾注释进入 `ConfigEntry.Comment` |
 | 简体中文键名翻译（仅显示） | `ConfigKeyTranslator`：中文为主标签、英文原名为灰色提示；写回始终用英文键 |
 | 顶部“应用到配置”只改改动行 | `ConfigYamlService.Apply`，写前备份 `*.easyhexo.bak` |
@@ -201,6 +210,9 @@ docs/screenshots/              # README 截图
 | 调整分类时同步剪切资源 | 文章和同名资源目录一起移动：`_posts\标题.md` + `_posts\标题\img.png` → `_posts\分类1\标题.md` + `_posts\分类1\标题\img.png` |
 | 拖入文章默认“不进行分类” | 导入的草稿默认“不进行分类”（发布到 `_posts` 根目录），下拉框包含全部已有分类 |
 | 已发布文章可重新编辑发布 | 左侧“已发布文章”选择 → 载入表单 → 写回原路径 |
+| 全部标签 | 左侧“全部标签”下拉框列出所有标签及引用次数（按次数倒序），选择标签即筛选引用它的文章 |
+| 从已有标签导入 | 编辑区“从已有标签导入”展开后点击标签，即可加入当前文章（自动去重） |
+| 批量调整分类 | 勾选文章后，左侧“分类 / 新建分类 / 删除空分类”下方出现批量条：已选 N 篇 + 目标分类 + 移动（不再占用右侧发布区） |
 
 ### 5.4 运行（对应原来的 Hexo.bat）
 
@@ -210,6 +222,23 @@ docs/screenshots/              # README 截图
 | 运行相关功能时显示圆圈进度条 | 执行期间 `ProgressRing` 显示，状态栏提示“正在执行：命令” |
 | 框内展示命令输出 | 输出框实时追加 stdout / stderr（UTF-8），显示命令、输出与“完成（退出码）”；可停止 / 清空 |
 
+### 5.5 文本编辑器（配置文件 / 主题配置）
+
+| 需求 | 实现 |
+| --- | --- |
+| 在其他应用打开 | 顶部“在其他应用打开”按钮，调用系统“打开方式”对话框（可在此设置默认应用） |
+| 转到文本编辑器 | `转到文本编辑器` 按钮进入 `TextEditorPage`，显示配置文件全部文本 |
+| 行号 / Tab / 高亮 | 左侧行号栏随滚动同步；Tab 插入两个空格；对键名、字符串、注释做轻量 YAML 高亮 |
+| 保存 / 撤销 / 重做 | 工具栏按钮 + RichEditBox 自带快捷键；保存写回原文件，写前生成 `*.easyhexo.bak` 备份 |
+
+### 5.6 安装包、图标与右键菜单
+
+| 需求 | 实现 |
+| --- | --- |
+| 软件图标 | `Assets\EasyHexo.ico`：Hexo 风格蓝色六边形 + 白色 H + 右下角齿轮徽章；编译进 exe，并设置窗口 / 任务栏图标 |
+| Windows 安装包 | `tools/build-installer.ps1` 用 WiX v7 生成 MSI：安装到 `%LOCALAPPDATA%\Programs\EasyHexo`，创建开始菜单快捷方式，写入 ARP 卸载信息与 App Paths，卸载时自动清理文件 / 注册表 |
+| 右键菜单 | 安装包注册（也可在设置页手动注册）HKCU 下 `.md` / `.txt` 的“发布到 Hexo 博客”菜单；点击后启动 `EasyHexo.exe --publish "<文件>"`，自动进入文章管理并导入该文件 |
+| 发布包目录归类 | 运行包把几十个语言资源目录统一收进 `locales\`，文档在 `docs\`，根目录只保留程序与运行库 |
 ## 6. `_config.yml` 写回规则
 
 > **键名显示与写回是分离的**：简体中文界面下，`title`、`pretty_urls.trailing_index` 等固定配置项会显示为「站点标题」「去掉链接中的 index.html」等中文名（英文原名以灰色小字 / 鼠标悬停提示展示）；写回文件时仍然使用**原始英文键名**，不会把中文键写入 `_config.yml`。主题配置不翻译键名。
@@ -265,6 +294,8 @@ docs/screenshots/              # README 截图
 - 主题配置编辑按文件缩进展开，不提供分区排序与键名翻译；文章正文富文本编辑、单实例限制未实现。
 - 分类以 `source\_posts` 的**一级子文件夹**为准（更深的子文件夹不单独作为分类）；移动分类只移动文章文件和同名资源目录，不会改写 `front-matter` 里的 `categories` 字段。
 - 删除空分类要求文件夹内没有任何文件；文章移走后若资源目录还残留，需要先手动清理。
+- Windows 11 的右键菜单采用经典注册表方式，显示在“显示更多选项”中（Win10 直接显示）；新式顶层菜单需要额外的打包 COM 扩展，未包含在本项目中。
+- 文本编辑器的语法高亮是轻量 YAML 规则；保存时生成 `*.easyhexo.bak`，没有行级差异预览。
 - 运行页需要本机已安装 Hexo（PATH 中能找到 `hexo`）；“本地预览 / 监听生成”会持续运行，点“停止”结束。
 - 顶部“基本信息”只编辑配置里已存在的键（例如没有 `keywords` 就不会凭空创建）。
 

@@ -45,6 +45,24 @@ public sealed partial class MainWindow : Window
         }
 
         ApplyTheme();
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "EasyHexo.ico");
+            if (!File.Exists(iconPath))
+            {
+                iconPath = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "EasyHexo.exe");
+            }
+
+            if (File.Exists(iconPath))
+            {
+                AppWindow.SetIcon(iconPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("设置窗口图标失败", ex);
+        }
+
         UpdateRootPath();
         UpdatePaneFooterVisibility();
 
@@ -53,6 +71,29 @@ public sealed partial class MainWindow : Window
         if (ContentFrame.CurrentSourcePageType is null)
         {
             ContentFrame.Navigate(typeof(ConfigEditorPage));
+        }
+    }
+
+    /// <summary>右键菜单 / 命令行打开：跳到“文章管理”并导入文件。</summary>
+    public async void OpenPublishFile(string path)
+    {
+        try
+        {
+            NavView.SelectedItem = NavPublish;
+            if (ContentFrame.CurrentSourcePageType != typeof(PublishPage))
+            {
+                ContentFrame.Navigate(typeof(PublishPage));
+            }
+
+            await Task.Yield();
+            if (ContentFrame.Content is PublishPage page)
+            {
+                await page.ImportFromPathAsync(path);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("打开待发布文件失败", ex);
         }
     }
 

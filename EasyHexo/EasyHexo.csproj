@@ -16,6 +16,7 @@
     <RootNamespace>EasyHexo</RootNamespace>
     <AssemblyName>EasyHexo</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon Condition="Exists('Assets\EasyHexo.ico')">Assets\EasyHexo.ico</ApplicationIcon>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <!-- 平台 -> RID，保证 F5 与 dotnet build 都能直接跑 -->
@@ -32,11 +33,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <ApplicationIcon Condition="Exists('Assets\EasyHexo.ico')">Assets\EasyHexo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <AssemblyTitle>Hexo 配置易 (Easy Hexo)</AssemblyTitle>
     <Product>Easy Hexo</Product>
     <Company>monishguy</Company>
@@ -48,5 +48,11 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.756" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Assets\EasyHexo.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\EasyHexo.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
+
 

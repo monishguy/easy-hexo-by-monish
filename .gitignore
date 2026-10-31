@@ -41,6 +41,9 @@ releases/
 /tools/msi/
 
 # 本地测试站点 / UI 自动化脚本（仅开发机使用）
+.uitest*/
+.msi-source/
+*.exe-icon.png
 .testsite/
 .testsite-seed/
 .testtools/
