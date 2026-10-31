@@ -64,6 +64,14 @@ public static class AppPaths
             AppLog.Write("迁移旧设置失败", ex);
         }
     }
+
+    /// <summary>旧版本可能保存过设置文件的位置（用于合并 Hexo 根目录）。</summary>
+    public static IEnumerable<string> LegacySettingsFiles()
+    {
+        yield return Path.Combine(LegacyLocalDir, "settings.json");
+        yield return Path.Combine(AppContext.BaseDirectory, "settings.json");
+        yield return SettingsFile + ".bak";
+    }
 }
 
 /// <summary>极简文件日志：出现未处理异常或读写失败时写一行，便于排查。</summary>
@@ -124,12 +132,30 @@ public static class SettingsService
 
     public static AppSettings Load()
     {
+        var settings = TryLoadFrom(AppPaths.SettingsFile);
+        if (settings is not null)
+        {
+            return settings;
+        }
+
+        var backup = TryLoadFrom(AppPaths.SettingsFile + ".bak");
+        if (backup is not null)
+        {
+            AppLog.Write("主设置文件读取失败，已从备份恢复。");
+            return backup;
+        }
+
+        return new AppSettings();
+    }
+
+    /// <summary>读取任意一个设置文件；不存在或格式错误返回 null。</summary>
+    public static AppSettings? TryLoadFrom(string path)
+    {
         try
         {
-            var path = AppPaths.SettingsFile;
             if (!File.Exists(path))
             {
-                return new AppSettings();
+                return null;
             }
 
             var json = File.ReadAllText(path);
@@ -139,8 +165,8 @@ public static class SettingsService
         }
         catch (Exception ex)
         {
-            AppLog.Write("读取设置失败", ex);
-            return new AppSettings();
+            AppLog.Write($"读取设置失败：{path}", ex);
+            return null;
         }
     }
 
@@ -149,7 +175,23 @@ public static class SettingsService
         try
         {
             AppPaths.EnsureAppDataDir();
-            File.WriteAllText(AppPaths.SettingsFile, JsonSerializer.Serialize(settings, Options));
+
+            // 旧实例 / 旧版本可能用空配置覆盖；这里保留磁盘上已有的根目录
+            var existing = TryLoadFrom(AppPaths.SettingsFile);
+            if (string.IsNullOrWhiteSpace(settings.HexoRoot) &&
+                !string.IsNullOrWhiteSpace(existing?.HexoRoot))
+            {
+                settings.HexoRoot = existing.HexoRoot;
+            }
+
+            if (File.Exists(AppPaths.SettingsFile))
+            {
+                File.Copy(AppPaths.SettingsFile, AppPaths.SettingsFile + ".bak", overwrite: true);
+            }
+
+            var temp = AppPaths.SettingsFile + ".tmp";
+            File.WriteAllText(temp, JsonSerializer.Serialize(settings, Options));
+            File.Move(temp, AppPaths.SettingsFile, overwrite: true);
         }
         catch (Exception ex)
         {

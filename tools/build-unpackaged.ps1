@@ -208,6 +208,9 @@ New-Item -ItemType Directory -Force -Path $zipStage | Out-Null
 
 Copy-Item (Join-Path $binDir '*') $zipStage -Recurse -Force
 
+# 发布包绝不携带本机设置文件，避免新版本覆盖用户配置
+Remove-Item (Join-Path $zipStage 'settings.json'), (Join-Path $zipStage 'settings.json.bak'), (Join-Path $zipStage 'settings.json.tmp') -Force -ErrorAction SilentlyContinue
+
 # 精简语言资源：只保留中文 / 英文，其余语言目录删除，避免根目录被几十个相似文件夹占满。
 # 注意：不能把这些目录移动到子文件夹，WinUI 控件会按当前系统语言从根目录加载 MUI，移动会导致启动崩溃。
 $keepLocales = @('en-us', 'zh-cn', 'zh-tw', 'zh-hans', 'zh-hant')

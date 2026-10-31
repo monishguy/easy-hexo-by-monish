@@ -82,6 +82,10 @@ function Write-Directory([string]$fullPath, [string]$relativePath, [int]$indent)
     }
 
     foreach ($file in (Get-ChildItem $fullPath -File | Sort-Object Name)) {
+        if ($file.Name -in @('settings.json', 'settings.json.bak', 'settings.json.tmp')) {
+            continue
+        }
+
         $rel = if ($relativePath) { "$relativePath/" + $file.Name } else { $file.Name }
         $compId = New-Id 'c_' $rel
         $fileId = New-Id 'f_' $rel

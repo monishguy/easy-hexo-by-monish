@@ -37,6 +37,32 @@ public sealed class AppState
         Settings = SettingsService.Load();
         Lang.SetLanguage(Settings.Language);
 
+        // 兼容旧版本：如果新位置没有根目录（或根目录已失效），
+        // 从 %LOCALAPPDATA%、软件目录、备份文件里找回旧配置的 Hexo 目录。
+        if (string.IsNullOrWhiteSpace(Settings.HexoRoot) || !Directory.Exists(Settings.HexoRoot))
+        {
+            foreach (var candidatePath in AppPaths.LegacySettingsFiles())
+            {
+                var legacy = SettingsService.TryLoadFrom(candidatePath);
+                if (legacy is null ||
+                    string.IsNullOrWhiteSpace(legacy.HexoRoot) ||
+                    !Directory.Exists(legacy.HexoRoot))
+                {
+                    continue;
+                }
+
+                Settings.HexoRoot = legacy.HexoRoot;
+                if (Settings.Categories.Count == 0)
+                {
+                    Settings.Categories.AddRange(legacy.Categories);
+                }
+
+                SaveSettings();
+                AppLog.Write($"已从旧配置恢复 Hexo 根目录：{legacy.HexoRoot}");
+                break;
+            }
+        }
+
         if (!File.Exists(AppPaths.SettingsFile))
         {
             SaveSettings();
